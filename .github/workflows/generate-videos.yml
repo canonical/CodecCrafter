@@ -2,7 +2,6 @@ name: Generate Golden Videos
 
 on:
   workflow_dispatch:
-    description: 'Manually trigger video generation'
   push:
     branches:
       - main  # Only monitor the main branch - change this if you use a different default branch
