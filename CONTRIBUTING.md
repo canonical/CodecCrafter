@@ -22,17 +22,22 @@ If you find a bug or have a suggestion for improvement:
 
 1. **Fork the repository** on GitHub
 2. **Clone your fork**:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/CodecCrafter.git
    cd CodecCrafter
    ```
+
 3. **Install dependencies**:
+
    ```bash
    uv pip install -r requirements.txt
    # or
    pip install -r requirements.txt
    ```
+
 4. **Create a branch** for your changes:
+
    ```bash
    git checkout -b feature/your-feature-name
    # or
@@ -60,14 +65,17 @@ If you find a bug or have a suggestion for improvement:
 #### Submitting Changes
 
 1. **Commit your changes**:
+
    ```bash
    git add .
    git commit -m "Description of your changes"
    ```
+
    - Write clear, descriptive commit messages
    - Reference issue numbers if applicable (e.g., "Fix #123: ...")
 
 2. **Push to your fork**:
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -88,6 +96,7 @@ If you find a bug or have a suggestion for improvement:
 #### Adding a New Codec
 
 1. Create a new handler class in `scripts/generate_golden_video.py`:
+
    ```python
    class MyCodecHandler(CodecHandler):
        def __init__(self):
@@ -139,9 +148,9 @@ If you find a bug or have a suggestion for improvement:
 
 ### Python
 
-- Follow PEP 8
+- Code must be formatted with **black** (line length: 79 characters)
+- Code must pass **flake8** linting (max line length: 79 characters)
 - Use type hints for function signatures
-- Maximum line length: 100 characters (flexible for readability)
 - Use descriptive variable names
 - Add docstrings for public functions/classes
 
@@ -153,7 +162,8 @@ If you find a bug or have a suggestion for improvement:
 - Explain "why" in the body if needed
 
 Example:
-```
+
+```text
 Add support for VP10 codec
 
 Implements VP10Handler with proper reproducibility settings.
@@ -167,6 +177,7 @@ Fixes #456
 Before submitting:
 
 1. **Test locally**:
+
    ```bash
    # Test single video generation
    python scripts/generate_golden_video.py --resolution 1080p --fps 30 --codec h264 --duration 5

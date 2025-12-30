@@ -335,7 +335,11 @@ class VideoConfig:
 
         # Evaluate with only width, height, fps in scope
         try:
-            result = eval(formula, {"__builtins__": {}}, {"width": self.width, "height": self.height, "fps": self.fps})
+            result = eval(
+                formula,
+                {"__builtins__": {}},
+                {"width": self.width, "height": self.height, "fps": self.fps},
+            )
             # Convert to bitrate string (bits per second)
             if result >= 1000000:
                 return f"{int(result / 1000000)}M"
@@ -355,13 +359,19 @@ class VideoConfig:
         return self.calculate_bitrate(formula)
 
 
-def parse_resolution(resolution: Optional[str] = None, width: Optional[int] = None, height: Optional[int] = None) -> Tuple[int, int]:
+def parse_resolution(
+    resolution: Optional[str] = None,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+) -> Tuple[int, int]:
     """Parse resolution from various formats."""
     if width and height:
         return (width, height)
 
     if not resolution:
-        raise ValueError("Resolution must be provided (via --resolution or --width/--height)")
+        raise ValueError(
+            "Resolution must be provided " "(via --resolution or --width/--height)"
+        )
 
     # Check presets
     resolution_upper = resolution.upper()
@@ -381,7 +391,10 @@ def load_config(config_path: Path) -> Dict[str, Any]:
     with open(config_path, "r") as f:
         if config_path.suffix.lower() in [".yaml", ".yml"]:
             if yaml is None:
-                raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
+                raise ImportError(
+                    "PyYAML is required for YAML config files. "
+                    "Install with: pip install pyyaml"
+                )
             return yaml.safe_load(f)
         else:
             return json.load(f)
@@ -390,7 +403,10 @@ def load_config(config_path: Path) -> Dict[str, Any]:
 def validate_config(config: Dict[str, Any]):
     """Validate configuration structure."""
     if "videos" not in config:
-        raise ValueError("Config file must contain 'videos' key with a list of video configurations")
+        raise ValueError(
+            "Config file must contain 'videos' key "
+            "with a list of video configurations"
+        )
     if not isinstance(config["videos"], list):
         raise ValueError("'videos' must be a list")
     if len(config["videos"]) == 0:
@@ -402,7 +418,9 @@ def merge_configs(
     video_config: Dict[str, Any],
     cli_overrides: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Merge configurations with priority: defaults < video_config < cli_overrides."""
+    """Merge configurations with priority:
+    defaults < video_config < cli_overrides.
+    """
     merged = {}
     # Start with defaults
     merged.update(defaults or {})
@@ -413,7 +431,9 @@ def merge_configs(
     return merged
 
 
-def build_ffmpeg_command(config: VideoConfig, global_bitrate_formula: Optional[str] = None) -> List[str]:
+def build_ffmpeg_command(
+    config: VideoConfig, global_bitrate_formula: Optional[str] = None
+) -> List[str]:
     """Build FFmpeg command for video generation."""
     handler = CODEC_REGISTRY.get_handler(config.codec)
     if not handler:
@@ -432,10 +452,11 @@ def build_ffmpeg_command(config: VideoConfig, global_bitrate_formula: Optional[s
     cmd.extend(["-bitexact", "-map_metadata", "-1", "-fflags", "+bitexact"])
 
     # Input (test pattern)
-    cmd.extend([
-        "-f", "lavfi",
-        "-i", f"{config.test_pattern}=size={config.width}x{config.height}:rate={config.fps}:duration={config.duration}",
-    ])
+    test_pattern_str = (
+        f"{config.test_pattern}=size={config.width}x{config.height}:"
+        f"rate={config.fps}:duration={config.duration}"
+    )
+    cmd.extend(["-f", "lavfi", "-i", test_pattern_str])
 
     # Video codec and parameters
     cmd.extend(["-c:v", handler.get_encoder()])
@@ -470,7 +491,9 @@ def format_time(seconds: float) -> str:
         return f"{hours}h {minutes}m {secs:.1f}s"
 
 
-def generate_video(config: VideoConfig, global_bitrate_formula: Optional[str] = None) -> bool:
+def generate_video(
+    config: VideoConfig, global_bitrate_formula: Optional[str] = None
+) -> bool:
     """Generate a single video."""
     config.validate()
 
@@ -498,7 +521,7 @@ def generate_video(config: VideoConfig, global_bitrate_formula: Optional[str] = 
 
     start_time = time.time()
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
         elapsed = time.time() - start_time
         print(f"✓ Generated {output_path.name} in {format_time(elapsed)}")
         return True
@@ -517,24 +540,69 @@ def main():
 
     # Resolution options (mutually exclusive)
     resolution_group = parser.add_mutually_exclusive_group()
-    resolution_group.add_argument("--resolution", type=str, help="Resolution preset (480p, 720p, 1080p, 2160p, 4K, 8K) or explicit (1920x1080)")
-    resolution_group.add_argument("--width", type=int, help="Video width (use with --height)")
+    resolution_group.add_argument(
+        "--resolution",
+        type=str,
+        help=(
+            "Resolution preset (480p, 720p, 1080p, 2160p, 4K, 8K) "
+            "or explicit (1920x1080)"
+        ),
+    )
+    resolution_group.add_argument(
+        "--width", type=int, help="Video width (use with --height)"
+    )
     parser.add_argument("--height", type=int, help="Video height (use with --width)")
 
     # Required parameters (when not using --config)
     parser.add_argument("--fps", type=int, help="Frames per second")
-    parser.add_argument("--codec", type=str, help="Video codec (h264, h265, vp8, vp9, av1, mpeg4)")
+    parser.add_argument(
+        "--codec",
+        type=str,
+        help="Video codec (h264, h265, vp8, vp9, av1, mpeg4)",
+    )
     parser.add_argument("--duration", type=float, help="Duration in seconds")
 
     # Optional parameters
     parser.add_argument("--bitrate", type=str, help="Bitrate (e.g., '40M', '5000k')")
-    parser.add_argument("--pix-fmt", type=str, default="yuv420p", help="Pixel format (default: yuv420p)")
-    parser.add_argument("--test-pattern", type=str, default="testsrc2", help="Test pattern (default: testsrc2)")
-    parser.add_argument("--preset", type=str, default="veryslow", help="FFmpeg preset (default: veryslow)")
-    parser.add_argument("--output-dir", type=str, default=".", help="Output directory (default: current directory)")
-    parser.add_argument("--output-filename", type=str, help="Output filename (auto-generated if not provided)")
-    parser.add_argument("--no-skip-existing", action="store_true", help="Overwrite existing files")
-    parser.add_argument("--config", type=str, help="Configuration file (JSON or YAML) for batch generation")
+    parser.add_argument(
+        "--pix-fmt",
+        type=str,
+        default="yuv420p",
+        help="Pixel format (default: yuv420p)",
+    )
+    parser.add_argument(
+        "--test-pattern",
+        type=str,
+        default="testsrc2",
+        help="Test pattern (default: testsrc2)",
+    )
+    parser.add_argument(
+        "--preset",
+        type=str,
+        default="veryslow",
+        help="FFmpeg preset (default: veryslow)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=".",
+        help="Output directory (default: current directory)",
+    )
+    parser.add_argument(
+        "--output-filename",
+        type=str,
+        help="Output filename (auto-generated if not provided)",
+    )
+    parser.add_argument(
+        "--no-skip-existing",
+        action="store_true",
+        help="Overwrite existing files",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Configuration file (JSON or YAML) for batch generation",
+    )
 
     args = parser.parse_args()
 
@@ -590,7 +658,9 @@ def main():
                     width, height = parse_resolution(resolution=merged["resolution"])
                 else:
                     # Try CLI args as fallback
-                    width, height = parse_resolution(args.resolution, args.width, args.height)
+                    width, height = parse_resolution(
+                        args.resolution, args.width, args.height
+                    )
             except ValueError as e:
                 print(f"ERROR: Video {idx}/{total} has invalid resolution: {e}")
                 continue
@@ -617,8 +687,15 @@ def main():
                 extra_params=merged.get("extra_params", []),
             )
 
-            if video_config.fps is None or video_config.codec is None or video_config.duration is None:
-                print(f"ERROR: Video {idx}/{total} is missing required fields (fps, codec, duration)")
+            if (
+                video_config.fps is None
+                or video_config.codec is None
+                or video_config.duration is None
+            ):
+                print(
+                    f"ERROR: Video {idx}/{total} is missing required fields "
+                    f"(fps, codec, duration)"
+                )
                 continue
 
             print(f"\n[{idx}/{total}] Processing video configuration...")
