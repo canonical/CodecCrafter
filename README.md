@@ -14,7 +14,7 @@ CodecCrafter generates **reproducible golden video samples** with configurable p
 
 ## Repository Structure
 
-```
+```text
 CodecCrafter/
 ├── scripts/                    # Video generation scripts
 │   ├── generate_golden_video.py    # Main video generation script
@@ -49,12 +49,19 @@ CodecCrafter/
 #### Using uv (Recommended)
 
 1. Install uv:
+
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-   Or with pip: `pip install uv`
+
+   Or with pip:
+
+   ```bash
+   pip install uv
+   ```
 
 2. Install dependencies:
+
    ```bash
    uv pip install -r requirements.txt
    ```
@@ -141,6 +148,7 @@ Configuration files define which videos to generate. They can be written in JSON
 ```
 
 For detailed configuration documentation, see:
+
 - **[Configuration Guide](example_config/GUIDE_config.md)** - Complete guide for writing config files
 - **[Example Configs](example_config/)** - Ready-to-use examples
 
@@ -158,17 +166,18 @@ This repository includes a GitHub Actions workflow that automatically generates 
 ### Manual Trigger
 
 You can also manually trigger the workflow from the GitHub Actions tab:
-1. Go to **Actions** → **Generate Golden Videos**
+
+1. Go to **Actions** -> **Generate Golden Videos**
 2. Click **Run workflow**
 3. Select branch and click **Run workflow**
 
 ### Workflow Features
 
-- ✅ Automatically processes all config files in `scripts/config/`
-- ✅ Only commits videos if they changed (avoids empty commits)
-- ✅ Supports both JSON and YAML config files
-- ✅ Skips existing videos by default (configurable)
-- ✅ Provides summary of generation results
+- Automatically processes all config files in `scripts/config/`
+- Only commits videos if they changed (avoids empty commits)
+- Supports both JSON and YAML config files
+- Skips existing videos by default (configurable)
+- Provides summary of generation results
 
 ### Example Workflow
 
@@ -196,13 +205,14 @@ git push
 
 All videos are generated with **maximum reproducibility settings** to ensure bit-exact output:
 
-- ✅ Single-threaded encoding (`-threads 1`)
-- ✅ Fixed GOP structure (2 seconds worth of frames)
-- ✅ Deterministic codec parameters
-- ✅ Metadata stripping (`-bitexact`)
-- ✅ Disabled parallel processing features
+- Single-threaded encoding (`-threads 1`)
+- Fixed GOP structure (2 seconds worth of frames)
+- Deterministic codec parameters
+- Metadata stripping (`-bitexact`)
+- Disabled parallel processing features
 
 This ensures that the same configuration produces identical video files across different machines and runs, making them suitable for:
+
 - Golden file validation
 - Regression testing
 - Checksum verification
@@ -233,6 +243,7 @@ See the [User Guide](scripts/GUIDE_generate_golden_video.md#extending-the-script
 - PyYAML (for YAML config support)
 
 Install dependencies:
+
 ```bash
 uv pip install -r requirements.txt
 # or
