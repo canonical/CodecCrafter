@@ -1,0 +1,91 @@
+videos:
+  # 480p videos
+  - resolution: 480p
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 480p
+    fps: 30
+    codec: h265
+    duration: 10
+
+  # 720p videos
+  - resolution: 720p
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 720p
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 720p
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 720p
+    fps: 60
+    codec: h265
+    duration: 10
+
+  # 1080p videos
+  - resolution: 1080p
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 1080p
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 1080p
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 1080p
+    fps: 60
+    codec: h265
+    duration: 10
+
+  # 2160p (UHD) videos
+  - resolution: 2160p
+    fps: 30
+    codec: vp9
+    duration: 10
+  - resolution: 2160p
+    fps: 60
+    codec: vp9
+    duration: 10
+
+  # 4K (4096x2160) videos
+  - resolution: 4K
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 4K
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 4K
+    fps: 30
+    codec: vp9
+    duration: 10
+  - resolution: 4K
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 4K
+    fps: 60
+    codec: h265
+    duration: 10
+  - resolution: 4K
+    fps: 60
+    codec: vp9
+    duration: 10
+
+defaults:
+  pix_fmt: yuv420p
+  test_pattern: testsrc2
+  preset: veryslow
+  output_dir: video
+  skip_existing: true
+
+bitrate_formula: width * height * fps * 0.1
