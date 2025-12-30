@@ -370,7 +370,7 @@ def parse_resolution(
 
     if not resolution:
         raise ValueError(
-            "Resolution must be provided " "(via --resolution or --width/--height)"
+            "Resolution must be provided (--resolution or --width/--height)"
         )
 
     # Check presets
@@ -511,7 +511,9 @@ def generate_video(
     handler = CODEC_REGISTRY.get_handler(config.codec)
     if not handler or not CODEC_REGISTRY.check_codec_available(config.codec):
         encoder_name = handler.get_encoder() if handler else config.codec
-        print(f"ERROR: Codec encoder '{encoder_name}' is not available in FFmpeg")
+        print(
+            f"ERROR: Codec encoder '{encoder_name}' is not available in FFmpeg"
+        )
         return False
 
     # Build and run command
@@ -551,7 +553,9 @@ def main():
     resolution_group.add_argument(
         "--width", type=int, help="Video width (use with --height)"
     )
-    parser.add_argument("--height", type=int, help="Video height (use with --width)")
+    parser.add_argument(
+        "--height", type=int, help="Video height (use with --width)"
+    )
 
     # Required parameters (when not using --config)
     parser.add_argument("--fps", type=int, help="Frames per second")
@@ -563,7 +567,9 @@ def main():
     parser.add_argument("--duration", type=float, help="Duration in seconds")
 
     # Optional parameters
-    parser.add_argument("--bitrate", type=str, help="Bitrate (e.g., '40M', '5000k')")
+    parser.add_argument(
+        "--bitrate", type=str, help="Bitrate (e.g., '40M', '5000k')"
+    )
     parser.add_argument(
         "--pix-fmt",
         type=str,
@@ -655,14 +661,18 @@ def main():
                 if "width" in merged and "height" in merged:
                     width, height = merged["width"], merged["height"]
                 elif "resolution" in merged:
-                    width, height = parse_resolution(resolution=merged["resolution"])
+                    width, height = parse_resolution(
+                        resolution=merged["resolution"]
+                    )
                 else:
                     # Try CLI args as fallback
                     width, height = parse_resolution(
                         args.resolution, args.width, args.height
                     )
             except ValueError as e:
-                print(f"ERROR: Video {idx}/{total} has invalid resolution: {e}")
+                print(
+                    f"ERROR: Video {idx}/{total} has invalid resolution: {e}"
+                )
                 continue
 
             # Create VideoConfig
@@ -716,7 +726,9 @@ def main():
         if not args.duration:
             parser.error("--duration is required")
 
-        width, height = parse_resolution(args.resolution, args.width, args.height)
+        width, height = parse_resolution(
+            args.resolution, args.width, args.height
+        )
 
         output_dir = Path(args.output_dir)
         # Ensure output directory exists
