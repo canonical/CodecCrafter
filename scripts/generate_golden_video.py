@@ -373,7 +373,11 @@ def parse_resolution(
             "Resolution must be provided (--resolution or --width/--height)"
         )
 
-    # Check presets
+    # Check presets (case-insensitive)
+    resolution_lower = resolution.lower()
+    if resolution_lower in RESOLUTION_PRESETS:
+        return RESOLUTION_PRESETS[resolution_lower]
+    # Also check uppercase for "4K", "UHD", "8K"
     resolution_upper = resolution.upper()
     if resolution_upper in RESOLUTION_PRESETS:
         return RESOLUTION_PRESETS[resolution_upper]
@@ -448,8 +452,8 @@ def build_ffmpeg_command(
     # Build command
     cmd = ["ffmpeg"]
 
-    # Global reproducibility flags
-    cmd.extend(["-bitexact", "-map_metadata", "-1", "-fflags", "+bitexact"])
+    # Global reproducibility flags (input flags)
+    cmd.extend(["-bitexact", "-fflags", "+bitexact"])
 
     # Input (test pattern)
     test_pattern_str = (
@@ -465,6 +469,9 @@ def build_ffmpeg_command(
     cmd.extend(handler.get_speed_param(config.preset))
     cmd.extend(handler.get_essential_params(gop_size))
     cmd.extend(handler.get_codec_params())
+
+    # Global reproducibility flags (output flags)
+    cmd.extend(["-map_metadata", "-1"])
 
     # Extra parameters
     cmd.extend(config.extra_params)
