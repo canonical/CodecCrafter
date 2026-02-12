@@ -7,6 +7,7 @@ on:
       - main  # Only monitor the main branch - change this if you use a different default branch
     paths:
       - 'scripts/config/**'
+      - 'golden_sample_yaml_config/**'
       - '.github/workflows/generate-videos.yml'
       - 'scripts/generate_golden_video.py'
 
@@ -44,10 +45,11 @@ jobs:
       - name: Find config files
         id: find_configs
         run: |
-          if [ -d "scripts/config" ]; then
-            CONFIG_FILES=$(find scripts/config -name "*.json" -o -name "*.yaml" -o -name "*.yml" | tr '\n' ' ')
+          if [ -d "golden_sample_yaml_config" ]; then
+            CONFIG_FILES=$(find golden_sample_yaml_config \( -name "*.json" -o -name "*.yaml" -o -name "*.yml" \) | tr '\n' ' ')
+            CONFIG_FILES=$(echo "$CONFIG_FILES" | xargs)
             if [ -z "$CONFIG_FILES" ]; then
-              echo "No config files found in scripts/config/"
+              echo "No video config files found in golden_sample_yaml_config/"
               echo "files=" >> $GITHUB_OUTPUT
               echo "found=false" >> $GITHUB_OUTPUT
             else
@@ -56,7 +58,7 @@ jobs:
               echo "found=true" >> $GITHUB_OUTPUT
             fi
           else
-            echo "scripts/config directory does not exist"
+            echo "golden_sample_yaml_config directory does not exist"
             echo "files=" >> $GITHUB_OUTPUT
             echo "found=false" >> $GITHUB_OUTPUT
           fi
@@ -70,7 +72,7 @@ jobs:
           FAILED_CONFIGS=""
           for config_file in ${{ steps.find_configs.outputs.files }}; do
             echo "Processing config file: $config_file"
-            if ! uv run python scripts/generate_golden_video.py \
+            if ! uv run python scripts/generate_golden_video.py batch \
               --config "$config_file" \
               --output-dir video; then
               FAILED=1
@@ -117,8 +119,8 @@ jobs:
         run: |
           if [ "${{ steps.find_configs.outputs.found }}" == "false" ]; then
             echo "## ⚠️ No Config Files Found" >> $GITHUB_STEP_SUMMARY
-            echo "No configuration files found in \`scripts/config/\` directory." >> $GITHUB_STEP_SUMMARY
-            echo "Add \`.json\` or \`.yaml\` config files to trigger video generation." >> $GITHUB_STEP_SUMMARY
+            echo "No configuration files found in \`golden_sample_yaml_config/\` directory." >> $GITHUB_STEP_SUMMARY
+            echo "Add \`.json\` or \`.yaml\` video config files (with \`videos\` array) to trigger video generation." >> $GITHUB_STEP_SUMMARY
           elif [ "${{ steps.generate.outputs.failed }}" == "true" ]; then
             echo "## ❌ Video Generation Failed" >> $GITHUB_STEP_SUMMARY
             echo "Some config files failed to process. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
