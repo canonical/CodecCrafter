@@ -25,6 +25,20 @@ All configuration files **must** follow this structure:
 
 The `videos` key is **required** and must contain an array of video configurations.
 
+## Scenario
+
+Batch configs must specify `defaults.scenario`:
+
+- **`test_pattern`** — Lavfi test sources (testsrc2). Use for golden video test patterns.
+- **`av_sync`** — Black background, white flash + beep every second. Use for AV sync testing.
+
+Each config file targets **one scenario**. Scenario-specific keys cannot be mixed:
+
+- **test_pattern** configs cannot have: `audio_frequency`, `beep_duration`
+- **av_sync** configs cannot have: `test_pattern`
+
+If `defaults.scenario` is omitted, `test_pattern` is assumed.
+
 ## Video Configuration Fields
 
 ### Required Fields
@@ -48,13 +62,21 @@ Each video in the `videos` array must have these fields:
 
 - **`bitrate`** (string): Bitrate specification (e.g., `"40M"`, `"5000k"`). If not provided, will be calculated from formula.
 - **`pix_fmt`** (string): Pixel format (default: `"yuv420p"`)
-- **`test_pattern`** (string): FFmpeg test pattern (default: `"testsrc2"`)
 - **`output_dir`** (string): Output directory path (default: current directory or `"video"`)
-- **`output_filename`** (string): Custom output filename. If not provided, auto-generated as `{height}p_{fps}fps_{codec}.{ext}`
+- **`output_filename`** (string): Custom output filename. If not provided, auto-generated as `{height}p_{fps}fps_{codec}.{ext}` (or `_avsync` suffix for av_sync)
 - **`skip_existing`** (boolean): Skip if file exists (default: `true`)
 - **`preset`** (string): FFmpeg preset (default: `"veryslow"`)
 - **`bitrate_formula`** (string): Custom bitrate formula for this video (overrides global formula)
 - **`extra_params`** (array of strings): Additional FFmpeg parameters (e.g., `["-crf", "23"]`)
+
+**Scenario-specific (test_pattern only):**
+
+- **`test_pattern`** (string): FFmpeg test pattern (default: `"testsrc2"`)
+
+**Scenario-specific (av_sync only):**
+
+- **`audio_frequency`** (integer): Sine beep frequency in Hz (default: 1000)
+- **`beep_duration`** (float): Beep duration in seconds (default: 0.1)
 
 ## Defaults Section
 
@@ -63,9 +85,24 @@ The `defaults` section is optional and applies to all videos in the batch:
 ```json
 {
   "defaults": {
+    "scenario": "test_pattern",
     "pix_fmt": "yuv420p",
     "test_pattern": "testsrc2",
     "preset": "veryslow",
+    "output_dir": "video"
+  }
+}
+```
+
+For `av_sync` scenario:
+
+```json
+{
+  "defaults": {
+    "scenario": "av_sync",
+    "pix_fmt": "yuv420p",
+    "audio_frequency": 1000,
+    "beep_duration": 0.1,
     "output_dir": "video"
   }
 }
@@ -107,7 +144,8 @@ When merging configurations, the priority order is:
 
 1. **Defaults** (lowest priority)
 2. **Video config** (medium priority)
-3. **CLI overrides** (highest priority, when using `--config` with CLI args)
+
+Batch mode is config-driven only; there are no CLI overrides.
 
 ## Supported Codecs
 
@@ -215,6 +253,27 @@ When merging configurations, the priority order is:
 }
 ```
 
+### AV Sync Example
+
+```json
+{
+  "videos": [
+    {"resolution": "1080p", "fps": 30, "codec": "h264", "duration": 10},
+    {"resolution": "1080p", "fps": 30, "codec": "h265", "duration": 10}
+  ],
+  "defaults": {
+    "scenario": "av_sync",
+    "pix_fmt": "yuv420p",
+    "audio_frequency": 1000,
+    "beep_duration": 0.1,
+    "output_dir": "video"
+  },
+  "bitrate_formula": "width * height * fps * 0.1"
+}
+```
+
+See also: `scripts/config/golden_sample_av_sync_testset.yaml`
+
 ### YAML Format Example
 
 ```yaml
@@ -229,6 +288,7 @@ videos:
     duration: 10
 
 defaults:
+  scenario: test_pattern
   pix_fmt: yuv420p
   test_pattern: testsrc2
 
@@ -297,6 +357,13 @@ Each video must have: resolution (or width+height), fps, codec, and duration.
 ### Invalid Resolution Format
 
 Use presets (`1080p`, `4K`) or explicit format (`1920x1080`), not both.
+
+### Scenario "cannot have" Keys
+
+Do not mix scenario-specific keys:
+
+- **test_pattern** configs: Do not use `audio_frequency` or `beep_duration`
+- **av_sync** configs: Do not use `test_pattern`
 
 ## See Also
 

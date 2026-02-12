@@ -1,0 +1,96 @@
+# AV sync test video set - black background with white flash + beep every second
+# Uses scenario: av_sync (no test_pattern; generated via color, aevalsrc, sine)
+
+videos:
+  # 480p videos
+  - resolution: 480p
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 480p
+    fps: 30
+    codec: h265
+    duration: 10
+
+  # 720p videos
+  - resolution: 720p
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 720p
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 720p
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 720p
+    fps: 60
+    codec: h265
+    duration: 10
+
+  # 1080p videos
+  - resolution: 1080p
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 1080p
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 1080p
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 1080p
+    fps: 60
+    codec: h265
+    duration: 10
+
+  # 2160p (UHD) videos
+  - resolution: 2160p
+    fps: 30
+    codec: vp9
+    duration: 10
+  - resolution: 2160p
+    fps: 60
+    codec: vp9
+    duration: 10
+
+  # 4K (4096x2160) videos
+  - resolution: 4K
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 4K
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 4K
+    fps: 30
+    codec: vp9
+    duration: 10
+  - resolution: 4K
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 4K
+    fps: 60
+    codec: h265
+    duration: 10
+  - resolution: 4K
+    fps: 60
+    codec: vp9
+    duration: 10
+
+defaults:
+  scenario: av_sync
+  pix_fmt: yuv420p
+  preset: veryslow
+  output_dir: video
+  skip_existing: true
+  audio_frequency: 1000
+  beep_duration: 0.1
+
+bitrate_formula: width * height * fps * 0.1

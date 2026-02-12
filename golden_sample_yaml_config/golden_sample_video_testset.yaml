@@ -82,6 +82,7 @@ videos:
     duration: 10
 
 defaults:
+  scenario: test_pattern
   pix_fmt: yuv420p
   test_pattern: testsrc2
   preset: veryslow

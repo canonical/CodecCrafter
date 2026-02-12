@@ -76,36 +76,49 @@ Or with uv:
 uv run python scripts/generate_golden_video.py --help
 ```
 
+## Command Structure
+
+The script uses **subcommands**. You must specify one of:
+
+- **`test_pattern`** — Generate golden videos with lavfi test sources (testsrc2)
+- **`av_sync`** — Generate AV sync test videos (black background, white flash + beep every second)
+- **`batch`** — Batch generation from a config file
+
 ## Quick Start Examples
 
 ### Single Video via CLI
 
 ```bash
-# Generate 1080p H.264 video
-./scripts/generate_golden_video.py --resolution 1080p --fps 60 --codec h264 --duration 10
+# test_pattern: Generate 1080p H.264 video with test pattern
+./scripts/generate_golden_video.py test_pattern --resolution 1080p --fps 60 --codec h264 --duration 10
 
-# Generate UHD (2160p) video
-./scripts/generate_golden_video.py --resolution 2160p --fps 30 --codec h265 --duration 10
+# test_pattern: Generate UHD (2160p) video
+./scripts/generate_golden_video.py test_pattern --resolution 2160p --fps 30 --codec h265 --duration 10
 
-# Generate true 4K (4096×2160) video
-./scripts/generate_golden_video.py --resolution 4K --fps 30 --codec vp9 --duration 10 --bitrate 120M
+# test_pattern: Generate true 4K (4096×2160) video
+./scripts/generate_golden_video.py test_pattern --resolution 4K --fps 30 --codec vp9 --duration 10 --bitrate 120M
 
-# Generate AV1 video
-./scripts/generate_golden_video.py --resolution 1080p --fps 30 --codec av1 --duration 10
+# test_pattern: Generate AV1 video
+./scripts/generate_golden_video.py test_pattern --resolution 1080p --fps 30 --codec av1 --duration 10
+
+# av_sync: Generate AV sync test video (beep every second)
+./scripts/generate_golden_video.py av_sync --resolution 1080p --fps 30 --codec h264 --duration 10
 ```
 
 ### Batch Generation from Config File
 
 ```bash
-# Simple batch
-./scripts/generate_golden_video.py --config example_config/example_simple.json
+# Simple batch (test_pattern scenario)
+./scripts/generate_golden_video.py batch --config example_config/example_simple.json --output-dir video
 
 # Advanced batch with defaults
-./scripts/generate_golden_video.py --config example_config/example_advanced.json
+./scripts/generate_golden_video.py batch --config example_config/example_advanced.json --output-dir video
 
-# With CLI overrides (applies to all videos)
-./scripts/generate_golden_video.py --config scripts/config/videos.json --codec h264 --fps 30
+# AV sync test videos
+./scripts/generate_golden_video.py batch --config scripts/config/golden_sample_av_sync_testset.yaml --output-dir video
 ```
+
+**Note:** Batch mode is config-driven only. The config file must set `defaults.scenario` to `test_pattern` or `av_sync`. There are no CLI overrides for batch.
 
 ## Configuration File Format
 
@@ -124,6 +137,7 @@ The config file **must** use the new format with a `videos` array:
     }
   ],
   "defaults": {
+    "scenario": "test_pattern",
     "pix_fmt": "yuv420p",
     "test_pattern": "testsrc2"
   },
@@ -132,6 +146,15 @@ The config file **must** use the new format with a `videos` array:
 ```
 
 **Important**: The old format (list or single dict) is **not supported**. You must use the new format with `videos` array.
+
+### Scenario
+
+Batch configs must specify `defaults.scenario`:
+
+- **`test_pattern`** — Lavfi test sources (testsrc2). Output filenames: `{height}p_{fps}fps_{codec}.{ext}`
+- **`av_sync`** — Black background, white flash + beep every second. Output filenames: `{height}p_{fps}fps_{codec}_avsync.{ext}`
+
+Each config file targets **one scenario**. Scenario-specific keys cannot be mixed (e.g., `test_pattern` configs cannot have `audio_frequency`; `av_sync` configs cannot have `test_pattern`).
 
 ### Field Reference
 
@@ -147,13 +170,21 @@ The config file **must** use the new format with a `videos` array:
 
 - `bitrate`: Bitrate string (e.g., "40M", "5000k"). Auto-calculated if not provided
 - `pix_fmt`: Pixel format (default: "yuv420p")
-- `test_pattern`: Test pattern (default: "testsrc2")
 - `output_dir`: Output directory path (string or Path)
 - `output_filename`: Custom output filename (string)
 - `skip_existing`: Skip if file exists (boolean, default: true)
 - `preset`: FFmpeg preset (default: "veryslow")
 - `bitrate_formula`: Custom bitrate formula (string, overrides global formula)
 - `extra_params`: Additional FFmpeg parameters (list of strings)
+
+**Scenario-specific (test_pattern only):**
+
+- `test_pattern`: FFmpeg test pattern (default: "testsrc2")
+
+**Scenario-specific (av_sync only):**
+
+- `audio_frequency`: Sine beep frequency in Hz (default: 1000)
+- `beep_duration`: Beep duration in seconds (default: 0.1)
 
 #### Defaults Section
 
@@ -162,9 +193,23 @@ The `defaults` section is optional and applies to all videos:
 ```json
 {
   "defaults": {
+    "scenario": "test_pattern",
     "pix_fmt": "yuv420p",
     "test_pattern": "testsrc2",
     "preset": "veryslow"
+  }
+}
+```
+
+For `av_sync`:
+
+```json
+{
+  "defaults": {
+    "scenario": "av_sync",
+    "pix_fmt": "yuv420p",
+    "audio_frequency": 1000,
+    "beep_duration": 0.1
   }
 }
 ```
@@ -192,7 +237,15 @@ For detailed configuration documentation, see `example_config/GUIDE_config.md`.
 
 ## Command-Line Interface
 
-### Options
+### Subcommands
+
+| Subcommand | Description |
+|------------|--------------|
+| `test_pattern` | Generate golden videos with lavfi test sources |
+| `av_sync` | Generate AV sync test videos (beep every second) |
+| `batch` | Batch generation from config file |
+
+### Common Options (test_pattern and av_sync)
 
 #### Resolution Options (mutually exclusive)
 
@@ -202,7 +255,7 @@ For detailed configuration documentation, see `example_config/GUIDE_config.md`.
 - `--width WIDTH`: Video width in pixels (use with `--height`)
 - `--height HEIGHT`: Video height in pixels (use with `--width`)
 
-#### Required Parameters (when not using `--config`)
+#### Required Parameters
 
 - `--fps FPS`: Frames per second
 - `--codec CODEC`: Video codec (see Supported Codecs)
@@ -212,23 +265,24 @@ For detailed configuration documentation, see `example_config/GUIDE_config.md`.
 
 - `--bitrate BITRATE`: Bitrate (e.g., "40M", "5000k"). Auto-calculated if not provided
 - `--pix-fmt PIX_FMT`: Pixel format (default: "yuv420p")
-- `--test-pattern PATTERN`: Test pattern (default: "testsrc2")
 - `--preset PRESET`: FFmpeg preset (default: "veryslow")
 - `--output-dir DIR`: Output directory (default: current directory)
 - `--output-filename FILENAME`: Output filename (auto-generated if not provided)
 - `--no-skip-existing`: Overwrite existing files instead of skipping
-- `--config PATH`: Configuration file (JSON or YAML) for batch generation
 
-### CLI Override Behavior
+#### test_pattern-only
 
-When using `--config` with CLI arguments, the CLI arguments act as **overrides** that apply to **all videos** in the batch:
+- `--test-pattern PATTERN`: FFmpeg test pattern (default: "testsrc2")
 
-```bash
-# All videos will use h264 codec and 30 fps
-./scripts/generate_golden_video.py --config videos.json --codec h264 --fps 30
-```
+#### av_sync-only
 
-Priority order: `defaults` < `video config` < `CLI overrides`
+- `--audio-frequency HZ`: Sine beep frequency in Hz (default: 1000)
+- `--beep-duration SEC`: Beep duration in seconds (default: 0.1)
+
+### Batch Options
+
+- `--config PATH`: Configuration file (JSON or YAML) — **required**
+- `--output-dir DIR`: Output directory for generated videos — **required**
 
 ## Bitrate Formula
 
@@ -362,38 +416,154 @@ The script checks for codec encoder availability before encoding. If a codec is 
 
 ### Adding a New Codec
 
-The script uses an extensible codec registry pattern. To add a new codec:
+Codecs are defined in `scripts/config/codecs.yaml` using a Pydantic-validated schema. To add a new codec, add an entry to that file:
 
-1. Create a new handler class inheriting from `CodecHandler`:
-
-```python
-class MyCodecHandler(CodecHandler):
-    def __init__(self):
-        super().__init__("libmycodec", "mkv")  # encoder name, container
-    
-    def get_speed_param(self, preset: str) -> List[str]:
-        return ["-preset", preset]
-    
-    def get_essential_params(self, gop_size: int) -> List[str]:
-        return ["-threads", "1", "-g", str(gop_size)]
-    
-    def get_codec_params(self) -> List[str]:
-        return []  # Codec-specific reproducibility params
+```yaml
+svt_av1:
+  encoder: libsvtav1
+  container: mp4
+  speed_type: preset
+  codec_params:
+    - "-svtav1-params"
+    - "tune=0"
+  aliases: [svt-av1]
 ```
 
-2. Register it in the `CodecRegistry._register_default_codecs()` method or register it at runtime:
+**Schema fields:**
 
-```python
-CODEC_REGISTRY.register("mycodec", MyCodecHandler(), aliases=["my-codec", "mc"])
+- `encoder` (required): FFmpeg encoder name (e.g., `libx264`).
+- `container` (required): Output container (e.g., `mp4`, `webm`).
+- `speed_type`: `preset` | `cpu_used` | `none` (default: `none`).
+- `sc_threshold`: `true` for x264/x265 (default: `false`).
+- `keyint_min`: `false` for MPEG-4 (default: `true`).
+- `extra_essential`: Extra FFmpeg args for reproducibility (see below). **Required for VP9**; omit for VP8, AV1, MPEG-4.
+- `codec_params`: Codec-specific params passed to FFmpeg (see below).
+- `aliases`: Alternative names (e.g., `[h.264, x264]`).
+
+#### Understanding `codec_params`
+
+`codec_params` is a list of strings passed **directly** to FFmpeg as arguments. Each entry becomes one argument. For options that take a value, use two entries: the option name and its value.
+
+**Format:** `[option1, value1, option2, value2, ...]` or just `[option1, value1]` for a single option.
+
+**Example 1 — H.264 (libx264):**
+
+x264 uses `-x264-params` with a colon-separated `key=value` string:
+
+```yaml
+codec_params:
+  - "-x264-params"
+  - "deterministic=1:no-mbtree=1:no-mixed-refs=1"
 ```
 
-### Adding New Parameters
+This produces: `ffmpeg ... -x264-params deterministic=1:no-mbtree=1:no-mixed-refs=1 ...`
 
-To add new parameters:
+- `deterministic=1` — avoid non-deterministic encoder behavior
+- `no-mbtree=1` — disable macroblock tree (reduces variance)
+- `no-mixed-refs=1` — reduce reference-frame variance
 
-1. Add the field to the `VideoConfig` dataclass
-2. Update the CLI argument parser
-3. Handle the parameter in the `build_ffmpeg_command()` function or in codec handlers
+**Example 2 — H.265 (libx265):**
+
+x265 uses `-x265-params` with a similar format:
+
+```yaml
+codec_params:
+  - "-x265-params"
+  - "deterministic=1:no-open-gop=1:no-wpp=1:no-pmode=1:no-pme=1"
+```
+
+- `deterministic=1` — deterministic encoding
+- `no-open-gop=1` — closed GOP for reproducibility
+- `no-wpp=1`, `no-pmode=1`, `no-pme=1` — disable parallelism for reproducibility
+
+**Example 3 — SVT-AV1 (libsvtav1):**
+
+```yaml
+codec_params:
+  - "-svtav1-params"
+  - "tune=0"
+```
+
+**Example 4 — No codec_params (VP8, AV1, MPEG-4):**
+
+If the encoder does not need extra params, omit `codec_params` or leave it empty:
+
+```yaml
+vp8:
+  encoder: libvpx
+  container: webm
+  speed_type: cpu_used
+  # codec_params not needed
+```
+
+**Example 5 — VP9 (no codec_params, requires extra_essential):**
+
+VP9 does not use `codec_params`, but it **requires** `extra_essential` for reproducibility:
+
+```yaml
+vp9:
+  encoder: libvpx-vp9
+  container: webm
+  speed_type: cpu_used
+  # codec_params not needed
+  extra_essential:
+    - "-tile-columns"
+    - "0"
+    - "-tile-rows"
+    - "0"
+    - "-row-mt"
+    - "0"
+```
+
+See "Understanding extra_essential" below for why these options are required.
+
+**How to find params for a new encoder:** Check the encoder's docs (e.g., `ffmpeg -h encoder=libx264`) or the project website. Look for reproducibility/determinism options.
+
+#### Understanding `extra_essential`
+
+`extra_essential` adds extra FFmpeg arguments for reproducibility. It uses the same format as FFmpeg: alternating option names and values.
+
+**VP9 — required for reproducibility**
+
+Without `extra_essential`, VP9 may use tiling and row multithreading, which can produce different bitstreams for the same input across runs. For reproducible golden videos, VP9 must include:
+
+```yaml
+vp9:
+  encoder: libvpx-vp9
+  container: webm
+  speed_type: cpu_used
+  extra_essential:
+    - "-tile-columns"
+    - "0"
+    - "-tile-rows"
+    - "0"
+    - "-row-mt"
+    - "0"
+```
+
+- `-tile-columns 0`, `-tile-rows 0` — disable frame tiling (VP9-specific)
+- `-row-mt 0` — disable row-based multithreading
+
+See [VP9 encoder options](https://ffmpeg.org/ffmpeg-codecs.html#libvpx_002c-libvpx_002dvp9) for details.
+
+**VP8, AV1, MPEG-4 — omit when not needed**
+
+These codecs do not require `extra_essential` for reproducibility:
+
+- **VP8** — No tiling or row-mt options. See [libvpx VP8](https://www.webmproject.org/vp8/) and [FFmpeg libvpx](https://ffmpeg.org/ffmpeg-codecs.html#libvpx_002c-libvpx_002dvp9).
+- **AV1** (libaom) — Generally deterministic by default. See [AOM AV1](https://aomedia.org/av1/) and [FFmpeg libaom-av1](https://ffmpeg.org/ffmpeg-codecs.html#libaom_002dav1).
+- **MPEG-4** — Simple encoder without these options. See [FFmpeg mpeg4](https://ffmpeg.org/ffmpeg-codecs.html#mpeg4).
+
+For these codecs, omit `extra_essential` or leave it empty.
+
+### Adding a New Scenario
+
+To add a new scenario:
+
+1. Create a config class inheriting from `BaseVideoConfig` with `build_ffmpeg_command` and `get_filename_suffix`
+2. Register in `SCENARIO_REGISTRY` with `config_class`, `extra_kwargs`, `extra_defaults`, `forbidden_keys`
+3. Add a subparser in `main()` and wire `run_single_video` / `_build_config_from_args`
+4. Update this guide and `example_config/GUIDE_config.md`
 
 ## Troubleshooting
 
