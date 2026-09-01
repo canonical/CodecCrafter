@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=../config.schema.json
+# Golden video test set. One entry per output file, named
+# {width}x{height}_{fps}fps_{codec}.{ext} by the generator.
+videos:
+  # 640x480 (VGA)
+  - {resolution: 640x480, fps: 30, codec: h264, duration: 10}
+  - {resolution: 640x480, fps: 30, codec: h265, duration: 10}
+
+  # 1280x720
+  - {resolution: 1280x720, fps: 30, codec: h264, duration: 10}
+  - {resolution: 1280x720, fps: 30, codec: h265, duration: 10}
+  - {resolution: 1280x720, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1280x720, fps: 60, codec: h264, duration: 10}
+  - {resolution: 1280x720, fps: 60, codec: h265, duration: 10}
+  - {resolution: 1280x720, fps: 60, codec: vp8, duration: 10}
+
+  # 1920x1080
+  - {resolution: 1920x1080, fps: 30, codec: h264, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: h265, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1920x1080, fps: 60, codec: h264, duration: 10}
+  - {resolution: 1920x1080, fps: 60, codec: h265, duration: 10}
+  - {resolution: 1920x1080, fps: 60, codec: vp8, duration: 10}
+  - {resolution: 1920x1080, fps: 60, codec: mpeg4, duration: 10}
+  - {resolution: 1920x1080, fps: 120, codec: h264, duration: 10}
+
+  # 2560x1440 (QHD)
+  - {resolution: 2560x1440, fps: 30, codec: h264, duration: 10}
+  - {resolution: 2560x1440, fps: 60, codec: h264, duration: 10}
+
+  # 3840x2160 (UHD)
+  - {resolution: 3840x2160, fps: 30, codec: h264, duration: 10}
+  - {resolution: 3840x2160, fps: 30, codec: h265, duration: 10}
+  - {resolution: 3840x2160, fps: 30, codec: vp9, duration: 10}
+  # MJPEG is intra-only full-range JPEG; higher bits_per_pixel because it
+  # has no inter-frame compression.
+  - {resolution: 3840x2160, fps: 30, codec: mjpeg, duration: 10,
+     pix_fmt: yuvj420p, bits_per_pixel: 0.5}
+  - {resolution: 3840x2160, fps: 60, codec: h264, duration: 10}
+  - {resolution: 3840x2160, fps: 60, codec: h265, duration: 10}
+  - {resolution: 3840x2160, fps: 60, codec: vp9, duration: 10}
+  - {resolution: 3840x2160, fps: 75, codec: h264, duration: 10}
+  - {resolution: 3840x2160, fps: 75, codec: h265, duration: 10}
+  - {resolution: 3840x2160, fps: 75, codec: vp9, duration: 10}
+  - {resolution: 3840x2160, fps: 90, codec: vp9, duration: 10}
+
+  # 4096x2160 (DCI 4K)
+  - {resolution: 4096x2160, fps: 30, codec: h264, duration: 10}
+  - {resolution: 4096x2160, fps: 30, codec: h265, duration: 10}
+  - {resolution: 4096x2160, fps: 30, codec: vp9, duration: 10}
+  - {resolution: 4096x2160, fps: 60, codec: h264, duration: 10}
+  - {resolution: 4096x2160, fps: 60, codec: h265, duration: 10}
+  - {resolution: 4096x2160, fps: 60, codec: vp9, duration: 10}
+
+# Encode-affecting parameters are pinned here on purpose, even where they
+# equal the script's built-in defaults: golden output must not change if a
+# code-level default ever does. Workflow knobs (output_dir, skip_existing)
+# belong to the workflow/CLI, not this file.
+defaults:
+  scenario: test_pattern
+  pix_fmt: yuv420p
+  test_pattern: testsrc2
+  preset: veryslow

@@ -1,0 +1,59 @@
+# Codec configurations for reproducible golden video generation.
+# Schema: encoder, container, speed_type, sc_threshold, keyint_min,
+#         extra_essential, codec_params, aliases
+
+h264:
+  encoder: libx264
+  container: mp4
+  speed_type: preset
+  sc_threshold: true
+  codec_params:
+    - "-x264-params"
+    - "deterministic=1:no-mbtree=1:no-mixed-refs=1"
+  aliases: [h.264, x264]
+
+h265:
+  encoder: libx265
+  container: mp4
+  speed_type: preset
+  sc_threshold: true
+  codec_params:
+    - "-x265-params"
+    - "deterministic=1:no-open-gop=1:no-wpp=1:no-pmode=1:no-pme=1"
+  aliases: [h.265, hevc, x265]
+
+vp8:
+  encoder: libvpx
+  container: webm
+  speed_type: cpu_used
+
+vp9:
+  encoder: libvpx-vp9
+  container: webm
+  speed_type: cpu_used
+  extra_essential:
+    - "-tile-columns"
+    - "0"
+    - "-tile-rows"
+    - "0"
+    - "-row-mt"
+    - "0"
+
+av1:
+  encoder: libaom-av1
+  container: webm
+  speed_type: cpu_used
+  aliases: [aom]
+
+mpeg4:
+  encoder: mpeg4
+  container: mp4
+  keyint_min: false
+  aliases: [mpeg-4]
+
+# Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
+# video entry: the encoder rejects plain yuv420p.
+mjpeg:
+  encoder: mjpeg
+  container: mov
+  keyint_min: false

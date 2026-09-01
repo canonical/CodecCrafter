@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../config.schema.json
+videos:
+  - resolution: 1920x1080
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 1920x1080
+    fps: 60
+    codec: h265
+    duration: 10
+  - resolution: 3840x2160
+    fps: 30
+    codec: vp9
+    duration: 10
+
+defaults:
+  pix_fmt: yuv420p
+  test_pattern: testsrc2
+  preset: veryslow
