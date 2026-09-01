@@ -89,6 +89,7 @@ determinism flags below).
 - **VP9** → `.webm`
 - **AV1** (aliases: `av1`, `aom`) → `.webm`
 - **MPEG-4** (aliases: `mpeg4`, `mpeg-4`) → `.mp4`
+- **MJPEG** (`mjpeg`, use `pix_fmt: yuvj420p`) → `.mov`
 
 ## GitHub Actions Workflow
 
@@ -127,6 +128,7 @@ bit-exact output across machines and runs:
 | VP9 (libvpx-vp9) | `-cpu-used 0` | `-tile-columns 0 -tile-rows 0 -row-mt 0` |
 | AV1 (libaom-av1) | `-cpu-used 0` | — |
 | MPEG-4 (mpeg4) | — | — |
+| MJPEG (mjpeg) | — | — (intra-only, every frame is a keyframe) |
 
 The x265 flags disable wavefront/parallel mode decision/parallel motion
 estimation; the VP9 flags disable tiling and row multithreading — these are

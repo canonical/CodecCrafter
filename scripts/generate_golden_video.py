@@ -98,7 +98,7 @@ class BaseVideoConfig(BaseModel):
     fps: int = Field(gt=0, description="Frames per second")
     codec: str = Field(
         description="Codec name or alias from scripts/config/codecs.yaml "
-        "(h264, h265, vp8, vp9, av1, mpeg4, ...)"
+        "(h264, h265, vp8, vp9, av1, mpeg4, mjpeg, ...)"
     )
     duration: float = Field(gt=0, description="Duration in seconds")
     bitrate: Optional[str] = Field(

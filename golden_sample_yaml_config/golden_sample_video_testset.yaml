@@ -1,86 +1,56 @@
 # yaml-language-server: $schema=../config.schema.json
+# Golden video test set. One entry per output file, named
+# {width}x{height}_{fps}fps_{codec}.{ext} by the generator.
 videos:
-  # 480p videos
-  - resolution: 480p
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 480p
-    fps: 30
-    codec: h265
-    duration: 10
+  # 640x480 (VGA)
+  - {resolution: 640x480, fps: 30, codec: h264, duration: 10}
+  - {resolution: 640x480, fps: 30, codec: h265, duration: 10}
 
-  # 720p videos
-  - resolution: 720p
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 720p
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 720p
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 720p
-    fps: 60
-    codec: h265
-    duration: 10
+  # 1280x720
+  - {resolution: 720p, fps: 30, codec: h264, duration: 10}
+  - {resolution: 720p, fps: 30, codec: h265, duration: 10}
+  - {resolution: 720p, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 720p, fps: 60, codec: h264, duration: 10}
+  - {resolution: 720p, fps: 60, codec: h265, duration: 10}
+  - {resolution: 720p, fps: 60, codec: vp8, duration: 10}
 
-  # 1080p videos
-  - resolution: 1080p
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 1080p
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 1080p
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 1080p
-    fps: 60
-    codec: h265
-    duration: 10
+  # 1920x1080
+  - {resolution: 1080p, fps: 30, codec: h264, duration: 10}
+  - {resolution: 1080p, fps: 30, codec: h265, duration: 10}
+  - {resolution: 1080p, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1080p, fps: 60, codec: h264, duration: 10}
+  - {resolution: 1080p, fps: 60, codec: h265, duration: 10}
+  - {resolution: 1080p, fps: 60, codec: vp8, duration: 10}
+  - {resolution: 1080p, fps: 60, codec: mpeg4, duration: 10}
+  - {resolution: 1080p, fps: 120, codec: h264, duration: 10}
 
-  # 2160p (UHD) videos
-  - resolution: 2160p
-    fps: 30
-    codec: vp9
-    duration: 10
-  - resolution: 2160p
-    fps: 60
-    codec: vp9
-    duration: 10
+  # 2560x1440 (QHD)
+  - {resolution: 2560x1440, fps: 30, codec: h264, duration: 10}
+  - {resolution: 2560x1440, fps: 60, codec: h264, duration: 10}
 
-  # 4K (4096x2160) videos
-  - resolution: 4K
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 4K
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 4K
-    fps: 30
-    codec: vp9
-    duration: 10
-  - resolution: 4K
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 4K
-    fps: 60
-    codec: h265
-    duration: 10
-  - resolution: 4K
-    fps: 60
-    codec: vp9
-    duration: 10
+  # 3840x2160 (UHD)
+  - {resolution: 2160p, fps: 30, codec: h264, duration: 10}
+  - {resolution: 2160p, fps: 30, codec: h265, duration: 10}
+  - {resolution: 2160p, fps: 30, codec: vp9, duration: 10}
+  # MJPEG is intra-only full-range JPEG; higher bits_per_pixel because it
+  # has no inter-frame compression.
+  - {resolution: 2160p, fps: 30, codec: mjpeg, duration: 10,
+     pix_fmt: yuvj420p, bits_per_pixel: 0.5}
+  - {resolution: 2160p, fps: 60, codec: h264, duration: 10}
+  - {resolution: 2160p, fps: 60, codec: h265, duration: 10}
+  - {resolution: 2160p, fps: 60, codec: vp9, duration: 10}
+  - {resolution: 2160p, fps: 75, codec: h264, duration: 10}
+  - {resolution: 2160p, fps: 75, codec: h265, duration: 10}
+  - {resolution: 2160p, fps: 75, codec: vp9, duration: 10}
+  - {resolution: 2160p, fps: 90, codec: vp9, duration: 10}
+
+  # 4096x2160 (DCI 4K)
+  - {resolution: 4K, fps: 30, codec: h264, duration: 10}
+  - {resolution: 4K, fps: 30, codec: h265, duration: 10}
+  - {resolution: 4K, fps: 30, codec: vp9, duration: 10}
+  - {resolution: 4K, fps: 60, codec: h264, duration: 10}
+  - {resolution: 4K, fps: 60, codec: h265, duration: 10}
+  - {resolution: 4K, fps: 60, codec: vp9, duration: 10}
 
 defaults:
   scenario: test_pattern

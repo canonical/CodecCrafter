@@ -87,7 +87,7 @@
           "type": "integer"
         },
         "codec": {
-          "description": "Codec name or alias from scripts/config/codecs.yaml (h264, h265, vp8, vp9, av1, mpeg4, ...)",
+          "description": "Codec name or alias from scripts/config/codecs.yaml (h264, h265, vp8, vp9, av1, mpeg4, mjpeg, ...)",
           "title": "Codec",
           "type": "string"
         },

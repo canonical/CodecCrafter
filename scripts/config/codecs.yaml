@@ -50,3 +50,10 @@ mpeg4:
   container: mp4
   keyint_min: false
   aliases: [mpeg-4]
+
+# Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
+# video entry: the encoder rejects plain yuv420p.
+mjpeg:
+  encoder: mjpeg
+  container: mov
+  keyint_min: false
