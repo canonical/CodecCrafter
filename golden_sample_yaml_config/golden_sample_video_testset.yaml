@@ -57,5 +57,3 @@ defaults:
   pix_fmt: yuv420p
   test_pattern: testsrc2
   preset: veryslow
-  output_dir: video
-  skip_existing: true

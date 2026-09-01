@@ -34,7 +34,5 @@ defaults:
   scenario: av_sync
   pix_fmt: yuv420p
   preset: veryslow
-  output_dir: video
-  skip_existing: true
   audio_frequency: 1000
   beep_duration: 0.1
