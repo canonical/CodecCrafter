@@ -2,6 +2,11 @@ name: Generate Golden Videos
 
 on:
   workflow_dispatch:
+    inputs:
+      force_regenerate:
+        description: "Re-encode every video even if it already exists"
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'scripts/**'
@@ -37,48 +42,54 @@ jobs:
           sudo apt-get install -y ffmpeg
       - name: Validate golden config files
         run: |
-          python - <<'EOF'
-          import sys
-          from pathlib import Path
-          sys.path.insert(0, "scripts")
-          from generate_golden_video import (
-              load_config, validate_config, validate_config_for_scenario)
-          configs = sorted(Path("golden_sample_yaml_config").glob("*.y*ml")) \
-              + sorted(Path("golden_sample_yaml_config").glob("*.json"))
-          assert configs, "no config files found in golden_sample_yaml_config/"
-          for path in configs:
-              config = load_config(path)
-              validate_config(config)
-              validate_config_for_scenario(config)
-              print(f"{path}: OK")
-          EOF
+          for config in golden_sample_yaml_config/*; do
+            python scripts/generate_golden_video.py validate --config "$config"
+          done
       - name: Smoke-generate one tiny video per scenario
         run: |
-          cat > /tmp/smoke.yaml <<'EOF'
-          videos:
-            - {resolution: 480p, fps: 30, codec: h264, duration: 1}
-          defaults:
-            scenario: test_pattern
-            preset: ultrafast
-          EOF
-          python scripts/generate_golden_video.py batch \
-            --config /tmp/smoke.yaml --output-dir /tmp/smoke-out
-          cat > /tmp/smoke_av.yaml <<'EOF'
-          videos:
-            - {resolution: 480p, fps: 30, codec: h264, duration: 1}
-          defaults:
-            scenario: av_sync
-            preset: ultrafast
-          EOF
-          python scripts/generate_golden_video.py batch \
-            --config /tmp/smoke_av.yaml --output-dir /tmp/smoke-out
+          python scripts/generate_golden_video.py test_pattern \
+            --resolution 480p --fps 30 --codec h264 --duration 1 \
+            --preset ultrafast --output-dir /tmp/smoke-out
+          python scripts/generate_golden_video.py av_sync \
+            --resolution 480p --fps 30 --codec h264 --duration 1 \
+            --preset ultrafast --output-dir /tmp/smoke-out
           ls -l /tmp/smoke-out
 
-  # Full generation: only on push to main or manual dispatch. skip_existing
-  # in the configs makes this incremental — only missing videos are encoded.
-  generate:
+  # Enumerate every video of every golden config into a matrix so encodes
+  # run in parallel (veryslow 4K encodes are far too slow for one runner
+  # when regenerating everything).
+  plan:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: |
+          pip install pyyaml
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          import yaml
+          entries = []
+          for path in sorted(Path("golden_sample_yaml_config").iterdir()):
+              if path.suffix.lower() not in (".yaml", ".yml", ".json"):
+                  continue
+              config = yaml.safe_load(path.read_text())
+              for index in range(len(config["videos"])):
+                  entries.append({"config": str(path), "index": index})
+          assert entries, "no videos found in golden_sample_yaml_config/"
+          print(f"matrix={json.dumps(entries)}")
+          EOF
+
+  generate:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -89,16 +100,52 @@ jobs:
           pip install -r requirements.txt
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-      - name: Generate videos from golden configs
+      - name: Generate one video
+        env:
+          CONFIG: ${{ matrix.config }}
+          INDEX: ${{ matrix.index }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_regenerate }}
         run: |
-          shopt -s nullglob
-          configs=(golden_sample_yaml_config/*.yaml golden_sample_yaml_config/*.yml golden_sample_yaml_config/*.json)
-          [ ${#configs[@]} -gt 0 ] || { echo "no config files found"; exit 1; }
-          for config in "${configs[@]}"; do
-            echo "Processing $config"
-            python scripts/generate_golden_video.py batch \
-              --config "$config" --output-dir video
-          done
+          python - <<'EOF'
+          import os
+          import yaml
+          config = yaml.safe_load(open(os.environ["CONFIG"]).read())
+          single = {
+              "videos": [config["videos"][int(os.environ["INDEX"])]],
+              "defaults": config.get("defaults", {}),
+          }
+          if config.get("bits_per_pixel") is not None:
+              single["bits_per_pixel"] = config["bits_per_pixel"]
+          if os.environ.get("FORCE") == "true":
+              single["defaults"]["skip_existing"] = False
+          yaml.safe_dump(single, open("/tmp/one_video.yaml", "w"))
+          EOF
+          python scripts/generate_golden_video.py batch \
+            --config /tmp/one_video.yaml --output-dir video
+      - name: Collect changed videos
+        id: collect
+        run: |
+          mkdir -p /tmp/new-videos
+          git status --porcelain video/ | awk '{print $2}' \
+            | xargs -r -I{} cp {} /tmp/new-videos/
+          ls /tmp/new-videos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: videos-${{ strategy.job-index }}
+          path: /tmp/new-videos/
+          if-no-files-found: ignore
+          retention-days: 1
+
+  commit:
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: videos-*
+          merge-multiple: true
+          path: video/
       - name: Commit and push new videos
         run: |
           git config user.name "github-actions[bot]"
