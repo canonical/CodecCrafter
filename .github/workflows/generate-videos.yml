@@ -25,8 +25,30 @@ permissions:
   contents: write
 
 jobs:
-  # PR validation: prove the script, codecs.yaml, and golden configs work,
-  # without committing any videos.
+  # PR schema check: every yaml/json config (golden, example, codecs.yaml
+  # via import) must validate. Fast — no ffmpeg needed.
+  schema-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Validate all config files
+        run: |
+          shopt -s nullglob
+          configs=(golden_sample_yaml_config/*.{yaml,yml,json}
+                   example_config/*.{yaml,yml,json})
+          [ ${#configs[@]} -gt 0 ] || { echo "no config files found"; exit 1; }
+          for config in "${configs[@]}"; do
+            python scripts/generate_golden_video.py validate --config "$config"
+          done
+
+  # PR smoke: prove the script and ffmpeg actually encode, without
+  # committing any videos.
   smoke:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -40,11 +62,6 @@ jobs:
           pip install -r requirements.txt
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-      - name: Validate golden config files
-        run: |
-          for config in golden_sample_yaml_config/*; do
-            python scripts/generate_golden_video.py validate --config "$config"
-          done
       - name: Smoke-generate one tiny video per scenario
         run: |
           python scripts/generate_golden_video.py test_pattern \
