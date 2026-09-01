@@ -113,7 +113,7 @@ $defs:
         - type: string
         - type: 'null'
         default: null
-        description: Custom output filename; auto-generated as {height}p_{fps}fps_{codec}[_avsync].{ext}
+        description: Custom output filename; auto-generated as {width}x{height}_{fps}fps_{codec}[_avsync].{ext}
           if omitted
         title: Output Filename
       skip_existing:

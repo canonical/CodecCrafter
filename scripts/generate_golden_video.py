@@ -121,7 +121,7 @@ class BaseVideoConfig(BaseModel):
     output_filename: Optional[str] = Field(
         default=None,
         description="Custom output filename; auto-generated as "
-        "{height}p_{fps}fps_{codec}[_avsync].{ext} if omitted",
+        "{width}x{height}_{fps}fps_{codec}[_avsync].{ext} if omitted",
     )
     skip_existing: bool = Field(
         default=True,
@@ -156,7 +156,8 @@ class BaseVideoConfig(BaseModel):
             ext = self.codec_config.container
             suffix = self.get_filename_suffix()
             filename = (
-                f"{self.height}p_{self.fps}fps_{self.codec}{suffix}.{ext}"
+                f"{self.width}x{self.height}_{self.fps}fps_"
+                f"{self.codec}{suffix}.{ext}"
             )
         return self.output_dir / filename
 

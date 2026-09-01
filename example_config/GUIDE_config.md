@@ -34,7 +34,7 @@ Priority: video entry > `defaults` > built-in default.
 | `pix_fmt` | string | `yuv420p` | FFmpeg pixel format |
 | `preset` | string | `veryslow` | FFmpeg speed preset |
 | `output_dir` | string | batch `--output-dir` | Where the file lands (CLI `--output-dir` overrides `defaults.output_dir`) |
-| `output_filename` | string | `{height}p_{fps}fps_{codec}[_avsync].{ext}` | Custom filename |
+| `output_filename` | string | `{width}x{height}_{fps}fps_{codec}[_avsync].{ext}` | Custom filename |
 | `skip_existing` | bool | `true` | Skip generation when the output file exists |
 | `extra_params` | list of strings | `[]` | Extra FFmpeg args appended to the command |
 
