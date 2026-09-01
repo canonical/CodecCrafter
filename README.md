@@ -100,10 +100,11 @@ determinism flags below).
   parallel on separate runners, then a final job collects the results and
   pushes a single commit to `video/`. Existing videos are skipped, so runs
   are incremental.
-- **Manual runs** (Actions → Generate Golden Videos → Run workflow) repeat
-  the same incremental generation. To re-encode videos that already exist,
-  run the script locally with `--force` (works on `batch` and the single
-  video subcommands).
+- **Manual runs** (Actions → Generate Golden Videos → Run workflow) offer a
+  **force_regenerate** checkbox (default off) that re-encodes every video,
+  still in parallel. Automatic runs never force. Locally, the same behavior
+  is the script's `--force` flag (on `batch` and the single-video
+  subcommands).
 
 ## Reproducibility
 
