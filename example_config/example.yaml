@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../config.schema.json
 videos:
   - resolution: 1080p
     fps: 30

@@ -3,6 +3,13 @@
 Batch config files for `scripts/generate_golden_video.py batch`. JSON or
 YAML (`.json`, `.yaml`, `.yml`) — same schema, pick either.
 
+A machine-readable JSON Schema lives at the repo root as
+`config.schema.json` (and `config.schema.yaml`), generated from the
+script's models by `generate_golden_video.py schema` and kept in sync by
+CI. For editor autocomplete and inline docs, add to a JSON config
+`"$schema": "../config.schema.json"`, or to a YAML config the first line
+`# yaml-language-server: $schema=../config.schema.json`.
+
 ## Top-level keys
 
 | Key | Type | Required | Meaning |

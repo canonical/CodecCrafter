@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../config.schema.json
 # AV sync test video set - black background with white flash + beep every second
 # Uses scenario: av_sync (no test_pattern; generated via color, aevalsrc, sine)
 

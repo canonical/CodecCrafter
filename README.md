@@ -26,6 +26,8 @@ CodecCrafter/
 │   ├── example.yaml                # YAML example
 │   └── example_simple.json         # JSON example
 ├── video/                          # Generated golden videos (output directory)
+├── config.schema.json              # JSON Schema for batch configs (generated)
+├── config.schema.yaml              # Same schema in YAML (generated)
 ├── requirements.txt                # Python dependencies
 └── .github/workflows/
     └── generate-videos.yml         # CI: validate on PRs, generate on main

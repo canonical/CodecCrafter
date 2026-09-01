@@ -8,6 +8,7 @@ machines and runs.
 """
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -92,19 +93,45 @@ class BaseVideoConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    width: int = Field(gt=0)
-    height: int = Field(gt=0)
-    fps: int = Field(gt=0)
-    codec: str
-    duration: float = Field(gt=0)
-    bitrate: Optional[str] = None
-    bits_per_pixel: Optional[float] = Field(default=None, gt=0)
-    pix_fmt: str = "yuv420p"
-    output_dir: Path = Path(".")
-    output_filename: Optional[str] = None
-    skip_existing: bool = True
-    preset: str = "veryslow"
-    extra_params: List[str] = []
+    width: int = Field(gt=0, description="Video width in pixels")
+    height: int = Field(gt=0, description="Video height in pixels")
+    fps: int = Field(gt=0, description="Frames per second")
+    codec: str = Field(
+        description="Codec name or alias from scripts/config/codecs.yaml "
+        "(h264, h265, vp8, vp9, av1, mpeg4, ...)"
+    )
+    duration: float = Field(gt=0, description="Duration in seconds")
+    bitrate: Optional[str] = Field(
+        default=None,
+        description="Explicit bitrate, e.g. '40M' or '5000k'; "
+        "wins over bits_per_pixel",
+    )
+    bits_per_pixel: Optional[float] = Field(
+        default=None,
+        gt=0,
+        description="Bitrate = width * height * fps * bits_per_pixel "
+        "(default 0.1)",
+    )
+    pix_fmt: str = Field(default="yuv420p", description="FFmpeg pixel format")
+    output_dir: Path = Field(
+        default=Path("."),
+        description="Output directory (the batch --output-dir option "
+        "overrides the defaults-level value)",
+    )
+    output_filename: Optional[str] = Field(
+        default=None,
+        description="Custom output filename; auto-generated as "
+        "{height}p_{fps}fps_{codec}[_avsync].{ext} if omitted",
+    )
+    skip_existing: bool = Field(
+        default=True,
+        description="Skip generation when the output file already exists",
+    )
+    preset: str = Field(default="veryslow", description="FFmpeg speed preset")
+    extra_params: List[str] = Field(
+        default=[],
+        description="Extra FFmpeg arguments appended to the command",
+    )
 
     @field_validator("codec")
     @classmethod
@@ -186,7 +213,10 @@ class BaseVideoConfig(BaseModel):
 class TestPatternVideoConfig(BaseVideoConfig):
     """Configuration for golden videos using lavfi test sources (testsrc2)."""
 
-    test_pattern: str = "testsrc2"
+    test_pattern: str = Field(
+        default="testsrc2",
+        description="FFmpeg lavfi test source (test_pattern scenario only)",
+    )
 
     def build_ffmpeg_command(
         self, global_bits_per_pixel: Optional[float] = None
@@ -210,10 +240,19 @@ class AvSyncVideoConfig(BaseVideoConfig):
     """Configuration for AV sync test videos (beep every second)."""
 
     duration: float = Field(
-        ge=0.1, description="AV sync requires duration >= 0.1 seconds"
+        ge=0.1,
+        description="Duration in seconds (av_sync requires >= 0.1)",
     )
-    audio_frequency: int = Field(default=1000, gt=0)
-    beep_duration: float = Field(default=0.1, gt=0)
+    audio_frequency: int = Field(
+        default=1000,
+        gt=0,
+        description="Sine beep frequency in Hz (av_sync scenario only)",
+    )
+    beep_duration: float = Field(
+        default=0.1,
+        gt=0,
+        description="Beep duration in seconds (av_sync scenario only)",
+    )
 
     def get_filename_suffix(self) -> str:
         """Return '_avsync' suffix for AV sync output filenames."""
@@ -287,11 +326,28 @@ SCENARIOS: Dict[str, type] = {
 class BatchConfig(BaseModel):
     """Schema of a batch config file (JSON or YAML)."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    videos: List[Dict[str, Any]] = Field(min_length=1)
-    defaults: Dict[str, Any] = {}
-    bits_per_pixel: Optional[float] = Field(default=None, gt=0)
+    schema_ref: Optional[str] = Field(
+        default=None,
+        alias="$schema",
+        description="Optional reference to config.schema.json for editor "
+        "support; ignored by the generator",
+    )
+    videos: List[Dict[str, Any]] = Field(
+        min_length=1, description="One entry per output video"
+    )
+    defaults: Dict[str, Any] = Field(
+        default={},
+        description="Values applied to every video unless the video "
+        "overrides them",
+    )
+    bits_per_pixel: Optional[float] = Field(
+        default=None,
+        gt=0,
+        description="Fallback for videos with no bitrate/bits_per_pixel "
+        "of their own (default 0.1)",
+    )
 
 
 def load_batch_config(config_path: Path) -> BatchConfig:
@@ -416,6 +472,81 @@ def run_batch(args: argparse.Namespace) -> int:
 
     print(f"\n✓ Generated {success_count}/{total} videos successfully")
     return 0 if success_count == total else 1
+
+
+def build_config_schema() -> Dict[str, Any]:
+    """JSON Schema for batch config files, derived from the models.
+
+    The video entry is the union of both scenario models plus the
+    'scenario' and 'resolution' conveniences resolved before model
+    validation. Entries list no required fields because 'defaults' may
+    supply them; the authoritative check stays the 'validate' subcommand.
+    """
+    video_props: Dict[str, Any] = {
+        "scenario": {
+            "type": "string",
+            "enum": sorted(SCENARIOS),
+            "default": "test_pattern",
+            "description": "Generator scenario; set it in 'defaults' "
+            "(one scenario per config file)",
+        },
+        "resolution": {
+            "type": "string",
+            "description": "Resolution preset (480p, 720p, 1080p, 2160p, "
+            "UHD, 4K, 8K) or explicit WIDTHxHEIGHT; alternative to "
+            "width+height",
+        },
+    }
+    for cls in SCENARIOS.values():
+        for name, prop in cls.model_json_schema()["properties"].items():
+            video_props.setdefault(name, prop)
+
+    top = BatchConfig.model_json_schema()
+    props = top["properties"]
+    props["videos"]["items"] = {"$ref": "#/$defs/video"}
+    props["defaults"] = {
+        "$ref": "#/$defs/video",
+        "description": props["defaults"]["description"],
+    }
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "CodecCrafter batch config",
+        "description": "Batch config for scripts/generate_golden_video.py. "
+        "Each entry in 'videos' is merged over 'defaults' (video wins) and "
+        "must end up with fps, codec, duration, and a resolution or "
+        "width+height. Generated by: generate_golden_video.py schema",
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["videos"],
+        "properties": props,
+        "$defs": {
+            "video": {
+                "type": "object",
+                "additionalProperties": False,
+                "description": "One video entry (or the 'defaults' "
+                "section); scenario-specific keys must match the "
+                "scenario",
+                "properties": video_props,
+            }
+        },
+    }
+
+
+def run_schema(args: argparse.Namespace) -> int:
+    """Write config.schema.json and config.schema.yaml at the repo root."""
+    schema = build_config_schema()
+    root = Path(__file__).resolve().parents[1]
+    json_path = root / "config.schema.json"
+    yaml_path = root / "config.schema.yaml"
+    json_path.write_text(json.dumps(schema, indent=2) + "\n")
+    yaml_path.write_text(
+        "# Generated by: scripts/generate_golden_video.py schema\n"
+        "# Same schema as config.schema.json, in YAML for human reading.\n"
+        + yaml.safe_dump(schema, sort_keys=False)
+    )
+    print(f"Wrote {json_path}")
+    print(f"Wrote {yaml_path}")
+    return 0
 
 
 def run_validate(args: argparse.Namespace) -> int:
@@ -600,12 +731,19 @@ def main():
         help="Configuration file (JSON or YAML)",
     )
 
+    subparsers.add_parser(
+        "schema",
+        help="Regenerate config.schema.json/.yaml from the models",
+    )
+
     args = parser.parse_args()
 
     if args.command == "batch":
         sys.exit(run_batch(args))
     if args.command == "validate":
         sys.exit(run_validate(args))
+    if args.command == "schema":
+        sys.exit(run_schema(args))
 
     if not args.resolution and not (args.width and args.height):
         parser.error("--resolution or --width/--height is required")

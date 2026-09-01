@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../config.schema.json
 videos:
   # 480p videos
   - resolution: 480p

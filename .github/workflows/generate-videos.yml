@@ -46,6 +46,10 @@ jobs:
           for config in "${configs[@]}"; do
             python scripts/generate_golden_video.py validate --config "$config"
           done
+      - name: Schema files match the models
+        run: |
+          python scripts/generate_golden_video.py schema
+          git diff --exit-code config.schema.json config.schema.yaml
 
   # PR smoke: prove the script and ffmpeg actually encode, without
   # committing any videos.
