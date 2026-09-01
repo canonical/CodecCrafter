@@ -128,10 +128,14 @@ class BaseVideoConfig(BaseModel):
         else:
             ext = self.codec_config.container
             suffix = self.get_filename_suffix()
-            filename = f"{self.height}p_{self.fps}fps_{self.codec}{suffix}.{ext}"
+            filename = (
+                f"{self.height}p_{self.fps}fps_{self.codec}{suffix}.{ext}"
+            )
         return self.output_dir / filename
 
-    def get_bitrate(self, global_bits_per_pixel: Optional[float] = None) -> str:
+    def get_bitrate(
+        self, global_bits_per_pixel: Optional[float] = None
+    ) -> str:
         """Explicit bitrate, or width * height * fps * bits_per_pixel."""
         if self.bitrate:
             return self.bitrate

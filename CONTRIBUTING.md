@@ -31,8 +31,6 @@ If you find a bug or have a suggestion for improvement:
 3. **Install dependencies**:
 
    ```bash
-   uv pip install -r requirements.txt
-   # or
    pip install -r requirements.txt
    ```
 
@@ -95,28 +93,19 @@ If you find a bug or have a suggestion for improvement:
 
 #### Adding a New Codec
 
-1. Create a new handler class in `scripts/generate_golden_video.py`:
+1. Add an entry to `scripts/config/codecs.yaml`:
 
-   ```python
-   class MyCodecHandler(CodecHandler):
-       def __init__(self):
-           super().__init__("libmycodec", "container")
-       
-       def get_speed_param(self, preset: str) -> List[str]:
-           # Implementation
-       
-       def get_essential_params(self, gop_size: int) -> List[str]:
-           # Implementation
-       
-       def get_codec_params(self) -> List[str]:
-           # Implementation
+   ```yaml
+   mycodec:
+     encoder: libmycodec
+     container: mp4
+     speed_type: preset        # preset | cpu_used | none
+     codec_params: ["-mycodec-params", "deterministic=1"]
    ```
 
-2. Register it in `CodecRegistry._register_default_codecs()`
+2. Verify reproducibility (encode twice, compare checksums)
 
-3. Add tests/examples
-
-4. Update documentation
+3. Update the codec table in the README
 
 #### Adding New Features
 
@@ -166,8 +155,8 @@ Example:
 ```text
 Add support for VP10 codec
 
-Implements VP10Handler with proper reproducibility settings.
-Includes tests and documentation updates.
+Adds a vp10 entry to codecs.yaml with proper reproducibility
+settings, plus tests and documentation updates.
 
 Fixes #456
 ```
