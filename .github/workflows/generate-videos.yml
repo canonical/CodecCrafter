@@ -2,11 +2,6 @@ name: Generate Golden Videos
 
 on:
   workflow_dispatch:
-    inputs:
-      force_regenerate:
-        description: "Re-encode every video even if it already exists"
-        type: boolean
-        default: false
   pull_request:
     paths:
       - 'scripts/**'
@@ -121,7 +116,6 @@ jobs:
         env:
           CONFIG: ${{ matrix.config }}
           INDEX: ${{ matrix.index }}
-          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_regenerate }}
         run: |
           python - <<'EOF'
           import os
@@ -133,8 +127,6 @@ jobs:
           }
           if config.get("bits_per_pixel") is not None:
               single["bits_per_pixel"] = config["bits_per_pixel"]
-          if os.environ.get("FORCE") == "true":
-              single["defaults"]["skip_existing"] = False
           yaml.safe_dump(single, open("/tmp/one_video.yaml", "w"))
           EOF
           python scripts/generate_golden_video.py batch \

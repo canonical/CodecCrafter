@@ -332,10 +332,16 @@ def build_video_config(video: Dict[str, Any]) -> BaseVideoConfig:
 
 
 def merge_batch_video(
-    config: BatchConfig, video: Dict[str, Any], cli_output_dir: str
+    config: BatchConfig,
+    video: Dict[str, Any],
+    cli_output_dir: str,
+    force: bool = False,
 ) -> Dict[str, Any]:
     """Merge one batch entry: video > CLI --output-dir > defaults."""
-    return {**config.defaults, "output_dir": cli_output_dir, **video}
+    merged = {**config.defaults, "output_dir": cli_output_dir, **video}
+    if force:
+        merged["skip_existing"] = False
+    return merged
 
 
 def format_time(seconds: float) -> str:
@@ -396,7 +402,9 @@ def run_batch(args: argparse.Namespace) -> int:
     for idx, video in enumerate(config.videos, 1):
         try:
             video_config = build_video_config(
-                merge_batch_video(config, video, args.output_dir)
+                merge_batch_video(
+                    config, video, args.output_dir, force=args.force
+                )
             )
         except (ValidationError, ValueError) as e:
             print(f"ERROR: Video {idx}/{total} config invalid: {e}")
@@ -481,9 +489,9 @@ def add_generic_args(parser: argparse.ArgumentParser) -> None:
         help="Output filename (auto-generated if not provided)",
     )
     parser.add_argument(
-        "--no-skip-existing",
+        "--force",
         action="store_true",
-        help="Overwrite existing files",
+        help="Overwrite existing output files (default: skip existing)",
     )
 
 
@@ -500,7 +508,7 @@ def run_single_video(args: argparse.Namespace) -> int:
         "pix_fmt": args.pix_fmt,
         "output_dir": args.output_dir,
         "output_filename": args.output_filename,
-        "skip_existing": not args.no_skip_existing,
+        "skip_existing": not args.force,
         "preset": args.preset,
     }
     if args.resolution:
@@ -574,6 +582,11 @@ def main():
         type=str,
         required=True,
         help="Output directory for generated videos",
+    )
+    sp_batch.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing output files (default: skip existing)",
     )
 
     sp_validate = subparsers.add_parser(
