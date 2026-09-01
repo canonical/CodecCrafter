@@ -138,7 +138,7 @@ This repository uses a dual-license approach:
 
 - **Source Code**: The Python scripts, configuration files, and workflows are licensed under the [MIT License](LICENSE). This allows you to use, modify, and distribute the code with minimal restrictions.
 
-- **Media Assets**: The generated video files in the `video/` directory are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). This means you can:
+- **Media Assets**: The generated video files in the `video/` directory are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) (see [video/LICENSE](video/LICENSE)). This means you can:
   - **Share** - Copy and redistribute the videos
   - **Adapt** - Use the videos for any purpose, including commercially
   - **Attribute** - You must give appropriate credit when using the videos
