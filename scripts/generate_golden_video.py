@@ -197,7 +197,7 @@ class TestPatternVideoConfig(BaseVideoConfig):
             f"rate={self.fps}:duration={self.duration}"
         )
         return (
-            ["ffmpeg", "-bitexact", "-fflags", "+bitexact"]
+            ["ffmpeg", "-y", "-bitexact", "-fflags", "+bitexact"]
             + ["-f", "lavfi", "-i", source]
             + self._build_encoding_args(global_bits_per_pixel)
             + ["-map_metadata", "-1"]
@@ -212,8 +212,8 @@ class AvSyncVideoConfig(BaseVideoConfig):
     duration: float = Field(
         ge=0.1, description="AV sync requires duration >= 0.1 seconds"
     )
-    audio_frequency: int = 1000
-    beep_duration: float = 0.1
+    audio_frequency: int = Field(default=1000, gt=0)
+    beep_duration: float = Field(default=0.1, gt=0)
 
     def get_filename_suffix(self) -> str:
         """Return '_avsync' suffix for AV sync output filenames."""
@@ -264,7 +264,7 @@ class AvSyncVideoConfig(BaseVideoConfig):
             "aac" if self.codec_config.container == "mp4" else "libopus"
         )
         return (
-            ["ffmpeg"]
+            ["ffmpeg", "-y", "-bitexact", "-fflags", "+bitexact"]
             + ["-f", "lavfi", "-i", color_src]
             + ["-f", "lavfi", "-i", silence_src]
             + ["-f", "lavfi", "-i", sine_src]
@@ -272,6 +272,7 @@ class AvSyncVideoConfig(BaseVideoConfig):
             + ["-map", "[v]", "-map", "[a]"]
             + self._build_encoding_args(global_bits_per_pixel)
             + ["-c:a", audio_codec, "-b:a", "128k"]
+            + ["-map_metadata", "-1"]
             + ["-t", str(self.duration)]
             + [str(self.get_output_path())]
         )
