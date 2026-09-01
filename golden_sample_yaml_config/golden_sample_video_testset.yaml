@@ -88,5 +88,3 @@ defaults:
   preset: veryslow
   output_dir: video
   skip_existing: true
-
-bitrate_formula: width * height * fps * 0.1

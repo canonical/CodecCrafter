@@ -9,7 +9,7 @@ YAML (`.json`, `.yaml`, `.yml`) — same schema, pick either.
 |---|---|---|---|
 | `videos` | list of video objects | yes (non-empty) | One entry per output video |
 | `defaults` | object | no | Values applied to every video unless the video overrides them |
-| `bitrate_formula` | string | no | Fallback bitrate formula for videos with no `bitrate`/`bitrate_formula` of their own |
+| `bits_per_pixel` | float | no | Fallback for videos with no `bitrate`/`bits_per_pixel` of their own (default `0.1`) |
 
 Priority: video entry > `defaults` > built-in default.
 
@@ -22,8 +22,8 @@ Priority: video entry > `defaults` > built-in default.
 | `fps` | int | required | Frames per second |
 | `codec` | string | required | See codec table below |
 | `duration` | float | required | Seconds (av_sync: >= 0.1) |
-| `bitrate` | string | computed | e.g. `"40M"`, `"5000k"`; wins over any formula |
-| `bitrate_formula` | string | global formula, else `width * height * fps * 0.1` | Arithmetic over `width`, `height`, `fps` only |
+| `bitrate` | string | computed | e.g. `"40M"`, `"5000k"`; wins over `bits_per_pixel` |
+| `bits_per_pixel` | float | top-level value, else `0.1` | Bitrate = `width * height * fps * bits_per_pixel` |
 | `pix_fmt` | string | `yuv420p` | FFmpeg pixel format |
 | `preset` | string | `veryslow` | FFmpeg speed preset |
 | `output_dir` | string | batch `--output-dir` | Where the file lands (CLI `--output-dir` overrides `defaults.output_dir`) |
@@ -76,8 +76,14 @@ defaults:
   preset: veryslow
   output_dir: video
 
-bitrate_formula: width * height * fps * 0.1
+bits_per_pixel: 0.1        # optional; this is the default
 ```
 
 Same structure in JSON: see `example_simple.json`. Production configs live
 in `golden_sample_yaml_config/`.
+
+Check a config without encoding anything:
+
+```bash
+python scripts/generate_golden_video.py validate --config my_config.yaml
+```

@@ -16,24 +16,19 @@ CodecCrafter generates **reproducible golden video samples** with configurable p
 
 ```text
 CodecCrafter/
-├── scripts/                    # Video generation scripts
-│   ├── generate_golden_video.py    # Main video generation script
-│   ├── GUIDE_generate_golden_video.md  # User guide for the script
-│   └── config/                  # Config files for GitHub Actions
-│       └── .gitkeep            # Placeholder (add your .json/.yaml configs here)
-├── example_config/             # Example configuration files
-│   ├── GUIDE_config.md         # Guide for writing config files
-│   ├── example_simple.json     # Simple single video example
-│   ├── example_batch.json      # Multiple videos with defaults
-│   ├── example_advanced.json   # Advanced config with bitrate formulas
-│   ├── example_av1.json        # AV1-specific examples
-│   └── example.yaml            # YAML format example
-├── video/                      # Generated golden videos (output directory)
-├── requirements.txt            # Python dependencies
-├── .github/
-│   └── workflows/
-│       └── generate-videos.yml # GitHub Actions workflow for auto-generation
-└── README.md                   # This file
+├── scripts/
+│   ├── generate_golden_video.py    # Video generation script
+│   └── config/
+│       └── codecs.yaml             # Codec definitions (encoder, container, flags)
+├── golden_sample_yaml_config/      # Production configs; CI generates video/ from these
+├── example_config/
+│   ├── GUIDE_config.md             # Config file schema reference
+│   ├── example.yaml                # YAML example
+│   └── example_simple.json         # JSON example
+├── video/                          # Generated golden videos (output directory)
+├── requirements.txt                # Python dependencies
+└── .github/workflows/
+    └── generate-videos.yml         # CI: validate on PRs, generate on main
 ```
 
 ## Quick Start
@@ -42,31 +37,8 @@ CodecCrafter/
 
 - **Python 3.8+**
 - **FFmpeg** with codec support (libx264, libx265, libvpx, libvpx-vp9, libaom-av1)
-- **uv** (recommended) or pip for package management
 
 ### Installation
-
-#### Using uv (Recommended)
-
-1. Install uv:
-
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-   Or with pip:
-
-   ```bash
-   pip install uv
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   uv pip install -r requirements.txt
-   ```
-
-#### Using pip
 
 ```bash
 pip install -r requirements.txt
@@ -75,24 +47,39 @@ pip install -r requirements.txt
 ### Generate a Single Video
 
 ```bash
-# Generate a 1080p H.264 video
-./scripts/generate_golden_video.py --resolution 1080p --fps 30 --codec h264 --duration 10
+# 1080p H.264 test pattern
+./scripts/generate_golden_video.py test_pattern \
+  --resolution 1080p --fps 30 --codec h264 --duration 10
 
-# Generate with explicit dimensions
-./scripts/generate_golden_video.py --width 1920 --height 1080 --fps 60 --codec h265 --duration 10
+# AV sync test video (white flash + beep every second)
+./scripts/generate_golden_video.py av_sync \
+  --resolution 1080p --fps 30 --codec h264 --duration 10
+
+# Explicit dimensions
+./scripts/generate_golden_video.py test_pattern \
+  --width 1920 --height 1080 --fps 60 --codec h265 --duration 10
 ```
 
-### Generate Videos from Config File
+### Generate Videos from a Config File
 
 ```bash
-# Use an example config
-./scripts/generate_golden_video.py --config example_config/example_batch.json
+./scripts/generate_golden_video.py batch \
+  --config golden_sample_yaml_config/golden_sample_video_testset.yaml \
+  --output-dir video
 
-# Use your own config
-./scripts/generate_golden_video.py --config scripts/config/my_videos.json --output-dir video
+# Validate a config without encoding anything
+./scripts/generate_golden_video.py validate \
+  --config golden_sample_yaml_config/golden_sample_video_testset.yaml
 ```
 
+Config files are JSON or YAML; see the
+**[config schema reference](example_config/GUIDE_config.md)**.
+
 ## Supported Codecs
+
+Codecs are defined in `scripts/config/codecs.yaml` — **adding or tuning a
+codec is a config edit, not a code change** (encoder, container, and the
+determinism flags below).
 
 - **H.264** (aliases: `h264`, `h.264`, `x264`) → `.mp4`
 - **H.265/HEVC** (aliases: `h265`, `h.265`, `hevc`, `x265`) → `.mp4`
@@ -101,154 +88,49 @@ pip install -r requirements.txt
 - **AV1** (aliases: `av1`, `aom`) → `.webm`
 - **MPEG-4** (aliases: `mpeg4`, `mpeg-4`) → `.mp4`
 
-## Configuration Files
-
-Configuration files define which videos to generate. They can be written in JSON or YAML format.
-
-### Basic Example
-
-```json
-{
-  "videos": [
-    {
-      "resolution": "1080p",
-      "fps": 30,
-      "codec": "h264",
-      "duration": 10
-    }
-  ]
-}
-```
-
-### With Defaults and Bitrate Formula
-
-```json
-{
-  "videos": [
-    {
-      "resolution": "1080p",
-      "fps": 30,
-      "codec": "h264",
-      "duration": 10
-    },
-    {
-      "resolution": "2160p",
-      "fps": 30,
-      "codec": "vp9",
-      "duration": 10
-    }
-  ],
-  "defaults": {
-    "pix_fmt": "yuv420p",
-    "test_pattern": "testsrc2",
-    "output_dir": "video"
-  },
-  "bitrate_formula": "width * height * fps * 0.1"
-}
-```
-
-For detailed configuration documentation, see:
-
-- **[Configuration Guide](example_config/GUIDE_config.md)** - Complete guide for writing config files
-- **[Example Configs](example_config/)** - Ready-to-use examples
-
 ## GitHub Actions Workflow
 
-This repository includes a GitHub Actions workflow that automatically generates videos when config files are updated.
+`generate-videos.yml` drives the repository:
 
-### How It Works
-
-1. **Place config files** in `scripts/config/` directory (`.json` or `.yaml` format)
-2. **Commit and push** the config files to the `main` branch
-3. **Workflow triggers** automatically and generates videos
-4. **Videos are committed** back to the repository in the `video/` folder
-
-### Manual Trigger
-
-You can also manually trigger the workflow from the GitHub Actions tab:
-
-1. Go to **Actions** -> **Generate Golden Videos**
-2. Click **Run workflow**
-3. Select branch and click **Run workflow**
-
-### Workflow Features
-
-- Automatically processes all config files in `scripts/config/`
-- Only commits videos if they changed (avoids empty commits)
-- Supports both JSON and YAML config files
-- Skips existing videos by default (configurable)
-- Provides summary of generation results
-
-### Example Workflow
-
-```bash
-# 1. Create a config file
-cat > scripts/config/my_videos.json << EOF
-{
-  "videos": [
-    {"resolution": "1080p", "fps": 30, "codec": "h264", "duration": 10},
-    {"resolution": "1080p", "fps": 60, "codec": "h265", "duration": 10}
-  ],
-  "defaults": {"output_dir": "video"}
-}
-EOF
-
-# 2. Commit and push
-git add scripts/config/my_videos.json
-git commit -m "Add video generation config"
-git push
-
-# 3. GitHub Actions will automatically generate the videos
-```
+- **Pull requests** touching `scripts/`, `golden_sample_yaml_config/`, or the
+  workflow run a **smoke job**: every golden config is validated and one tiny
+  video per scenario is encoded. No videos are committed.
+- **Pushes to main** (and manual runs) enumerate every video in every config
+  in `golden_sample_yaml_config/` into a **job matrix**, encode them in
+  parallel on separate runners, then a final job collects the results and
+  pushes a single commit to `video/`. Existing videos are skipped, so runs
+  are incremental.
+- **Manual runs** (Actions → Generate Golden Videos → Run workflow) accept a
+  **force_regenerate** flag that re-encodes everything, still in parallel.
 
 ## Reproducibility
 
-All videos are generated with **maximum reproducibility settings** to ensure bit-exact output:
+All videos are generated with **maximum reproducibility settings** for
+bit-exact output across machines and runs:
 
 - Single-threaded encoding (`-threads 1`)
-- Fixed GOP structure (2 seconds worth of frames)
-- Deterministic codec parameters
-- Metadata stripping (`-bitexact`)
-- Disabled parallel processing features
+- Fixed GOP structure: `-g` and `-keyint_min` locked to `fps * 2`
+- Metadata stripping (`-bitexact -fflags +bitexact -map_metadata -1`)
+- Scene-change detection disabled for x264/x265 (`-sc_threshold 0`)
+- Parallel processing disabled per codec:
 
-This ensures that the same configuration produces identical video files across different machines and runs, making them suitable for:
+| Codec | Speed parameter | Determinism flags |
+|---|---|---|
+| H.264 (libx264) | `-preset veryslow` | `deterministic=1:no-mbtree=1:no-mixed-refs=1` |
+| H.265 (libx265) | `-preset veryslow` | `deterministic=1:no-open-gop=1:no-wpp=1:no-pmode=1:no-pme=1` |
+| VP8 (libvpx) | `-cpu-used 0` | — |
+| VP9 (libvpx-vp9) | `-cpu-used 0` | `-tile-columns 0 -tile-rows 0 -row-mt 0` |
+| AV1 (libaom-av1) | `-cpu-used 0` | — |
+| MPEG-4 (mpeg4) | — | — |
 
-- Golden file validation
-- Regression testing
-- Checksum verification
-- CI/CD pipelines
-
-## Extending the Script
-
-The script uses an extensible architecture that makes it easy to add new codecs or parameters.
-
-### Adding a New Codec
-
-1. Create a handler class inheriting from `CodecHandler`
-2. Implement required methods (`get_encoder()`, `get_flags()`, etc.)
-3. Register it in the `CodecRegistry`
-
-See the [User Guide](scripts/GUIDE_generate_golden_video.md#extending-the-script) for detailed instructions.
+The x265 flags disable wavefront/parallel mode decision/parallel motion
+estimation; the VP9 flags disable tiling and row multithreading — these are
+the main sources of non-deterministic output.
 
 ## Documentation
 
-- **[User Guide](scripts/GUIDE_generate_golden_video.md)** - Complete guide for using the script
-- **[Configuration Guide](example_config/GUIDE_config.md)** - How to write config files
-- **[Example Configs](example_config/)** - Ready-to-use configuration examples
-
-## Requirements
-
-- Python 3.8+
-- FFmpeg with codec support
-- PyYAML (for YAML config support)
-
-Install dependencies:
-
-```bash
-uv pip install -r requirements.txt
-# or
-pip install -r requirements.txt
-```
+- **[Config schema reference](example_config/GUIDE_config.md)** — how to write config files
+- **[Example configs](example_config/)** — ready-to-use examples
 
 ## License
 
@@ -268,15 +150,7 @@ This repository uses a dual-license approach:
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
-
-- How to report issues
-- How to submit code changes
-- Code style guidelines
-- Adding new codecs or features
-- Documentation improvements
-
-### Quick Contribution Guide
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -284,5 +158,3 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 4. Commit with clear messages (`git commit -m 'Add amazing feature'`)
 5. Push to your fork (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
-
-For detailed guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).

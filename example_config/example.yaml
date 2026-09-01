@@ -16,5 +16,3 @@ defaults:
   pix_fmt: yuv420p
   test_pattern: testsrc2
   preset: veryslow
-
-bitrate_formula: width * height * fps * 0.1

@@ -92,5 +92,3 @@ defaults:
   skip_existing: true
   audio_frequency: 1000
   beep_duration: 0.1
-
-bitrate_formula: width * height * fps * 0.1

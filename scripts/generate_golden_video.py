@@ -8,7 +8,6 @@ machines and runs.
 """
 
 import argparse
-import json
 import re
 import subprocess
 import sys
@@ -16,124 +15,32 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
+import yaml
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     ValidationError,
     field_validator,
 )
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
-
-# Resolution presets
+# Resolution presets (keyed lowercase; looked up case-insensitively)
 RESOLUTION_PRESETS = {
     "480p": (854, 480),
     "720p": (1280, 720),
     "1080p": (1920, 1080),
     "2160p": (3840, 2160),
-    "UHD": (3840, 2160),
-    "4K": (4096, 2160),
-    "8K": (7680, 4320),
+    "uhd": (3840, 2160),
+    "4k": (4096, 2160),
+    "8k": (7680, 4320),
 }
 
-# Default bitrate formula
-DEFAULT_BITRATE_FORMULA = "width * height * fps * 0.1"
+# Default bitrate: width * height * fps * bits_per_pixel
+DEFAULT_BITS_PER_PIXEL = 0.1
 
 
-def _base_essential_params(
-    gop_size: int,
-    *,
-    sc_threshold: bool = False,
-    keyint_min: bool = True,
-) -> List[str]:
-    """Return common essential params: threads, g, keyint_min, sc_threshold."""
-    params = ["-threads", "1", "-g", str(gop_size)]
-    if keyint_min:
-        params.extend(["-keyint_min", str(gop_size)])
-    if sc_threshold:
-        params.extend(["-sc_threshold", "0"])
-    return params
-
-
-class CodecHandler:
-    """Base class for codec handlers."""
-
-    def __init__(self, encoder: str, container: str):
-        self.encoder = encoder
-        self.container = container
-
-    def get_encoder(self) -> str:
-        """Return the FFmpeg encoder name."""
-        return self.encoder
-
-    def get_container(self) -> str:
-        """Return the container/extension (e.g., 'mp4', 'webm')."""
-        return self.container
-
-    def get_speed_param(self, preset: str) -> List[str]:
-        """Return speed/preset parameters for the codec."""
-        return []
-
-    def get_essential_params(self, gop_size: int) -> List[str]:
-        """Return essential reproducibility parameters."""
-        return []
-
-    def get_codec_params(self) -> List[str]:
-        """Return codec-specific parameters for reproducibility."""
-        return []
-
-
-def _speed_param(speed_type: str, preset: str) -> List[str]:
-    """Return speed params by type: preset, cpu_used, or none."""
-    if speed_type == "preset":
-        return ["-preset", preset]
-    if speed_type == "cpu_used":
-        return ["-cpu-used", "0"]
-    return []
-
-
-class ConfigurableCodecHandler(CodecHandler):
-    """Codec handler driven by config (encoder, container, options)."""
-
-    def __init__(
-        self,
-        encoder: str,
-        container: str,
-        *,
-        speed_type: str = "none",
-        sc_threshold: bool = False,
-        keyint_min: bool = True,
-        extra_essential: Optional[List[str]] = None,
-        codec_params: Optional[List[str]] = None,
-    ):
-        super().__init__(encoder, container)
-        self._speed_type = speed_type
-        self._sc_threshold = sc_threshold
-        self._keyint_min = keyint_min
-        self._extra_essential = extra_essential or []
-        self._codec_params = codec_params or []
-
-    def get_speed_param(self, preset: str) -> List[str]:
-        return _speed_param(self._speed_type, preset)
-
-    def get_essential_params(self, gop_size: int) -> List[str]:
-        base = _base_essential_params(
-            gop_size,
-            sc_threshold=self._sc_threshold,
-            keyint_min=self._keyint_min,
-        )
-        return base + self._extra_essential
-
-    def get_codec_params(self) -> List[str]:
-        return self._codec_params.copy()
-
-
-class CodecConfigSchema(BaseModel):
-    """Schema for a single codec configuration (from codecs.yaml)."""
+class CodecConfig(BaseModel):
+    """One codec entry from codecs.yaml."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -147,144 +54,68 @@ class CodecConfigSchema(BaseModel):
     aliases: List[str] = []
 
 
-def _load_codec_configs() -> Dict[str, CodecConfigSchema]:
-    """Load and validate codec configs from YAML."""
+def _load_codecs() -> Dict[str, CodecConfig]:
+    """Load codecs.yaml into a name/alias -> CodecConfig map."""
     config_path = Path(__file__).parent / "config" / "codecs.yaml"
-    with open(config_path, "r") as f:
-        if yaml is None:
-            raise ImportError(
-                "PyYAML is required for codec config. "
-                "Install with: pip install pyyaml"
-            )
-        raw = yaml.safe_load(f)
+    raw = yaml.safe_load(config_path.read_text())
     if not isinstance(raw, dict):
         raise ValueError("codecs.yaml must be a dict mapping names to configs")
-    result = {}
-    for name, cfg in raw.items():
-        if not isinstance(cfg, dict):
-            raise ValueError(f"Codec '{name}' config must be a dict")
-        result[name] = CodecConfigSchema.model_validate(cfg)
-    return result
+    codecs = {
+        name.lower(): CodecConfig.model_validate(cfg)
+        for name, cfg in raw.items()
+    }
+    for name, cfg in list(codecs.items()):
+        for alias in cfg.aliases:
+            codecs[alias.lower()] = cfg
+    return codecs
 
 
-CODEC_CONFIGS: Dict[str, CodecConfigSchema] = _load_codec_configs()
+CODECS: Dict[str, CodecConfig] = _load_codecs()
 
 
-class CodecRegistry:
-    """Registry for codec handlers."""
-
-    def __init__(self):
-        self._handlers: Dict[str, CodecHandler] = {}
-        self._aliases: Dict[str, str] = {}
-        self._register_default_codecs()
-
-    def _register_default_codecs(self):
-        """Register default codec handlers from CODEC_CONFIGS."""
-        for name, cfg in CODEC_CONFIGS.items():
-            handler = ConfigurableCodecHandler(
-                encoder=cfg.encoder,
-                container=cfg.container,
-                speed_type=cfg.speed_type,
-                sc_threshold=cfg.sc_threshold,
-                keyint_min=cfg.keyint_min,
-                extra_essential=cfg.extra_essential,
-                codec_params=cfg.codec_params,
-            )
-            self.register(name, handler, aliases=cfg.aliases or None)
-
-    def register(
-        self,
-        name: str,
-        handler: CodecHandler,
-        aliases: Optional[List[str]] = None,
-    ):
-        """Register a codec handler."""
-        self._handlers[name.lower()] = handler
-        if aliases:
-            for alias in aliases:
-                self._aliases[alias.lower()] = name.lower()
-
-    def get_handler(self, codec_name: str) -> Optional[CodecHandler]:
-        """Get codec handler by name or alias."""
-        codec_name = codec_name.lower()
-        # Check direct name
-        if codec_name in self._handlers:
-            return self._handlers[codec_name]
-        # Check aliases
-        if codec_name in self._aliases:
-            canonical_name = self._aliases[codec_name]
-            return self._handlers.get(canonical_name)
-        return None
-
-    def check_codec_available(self, codec_name: str) -> bool:
-        """Check if codec encoder is available in FFmpeg."""
-        handler = self.get_handler(codec_name)
-        if not handler:
-            return False
-
-        encoder = handler.get_encoder()
-        try:
-            result = subprocess.run(
-                ["ffmpeg", "-hide_banner", "-encoders"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            return encoder in result.stdout
-        except (subprocess.SubprocessError, FileNotFoundError):
-            return False
-
-
-# Global codec registry
-CODEC_REGISTRY = CodecRegistry()
+def encoder_available(encoder: str) -> bool:
+    """Check that FFmpeg ships the given encoder."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-encoders"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+    return encoder in result.stdout
 
 
 class BaseVideoConfig(BaseModel):
     """Configuration for a single video generation task (shared fields)."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(extra="forbid")
 
-    width: int
-    height: int
-    fps: int
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    fps: int = Field(gt=0)
     codec: str
-    duration: float
+    duration: float = Field(gt=0)
     bitrate: Optional[str] = None
+    bits_per_pixel: Optional[float] = Field(default=None, gt=0)
     pix_fmt: str = "yuv420p"
     output_dir: Path = Path(".")
     output_filename: Optional[str] = None
     skip_existing: bool = True
     preset: str = "veryslow"
-    bitrate_formula: Optional[str] = None
     extra_params: List[str] = []
-
-    @field_validator("width", "height")
-    @classmethod
-    def validate_positive_int(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("must be positive")
-        return v
-
-    @field_validator("fps")
-    @classmethod
-    def validate_fps(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("must be positive")
-        return v
-
-    @field_validator("duration")
-    @classmethod
-    def validate_duration(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("must be positive")
-        return v
 
     @field_validator("codec")
     @classmethod
     def validate_codec(cls, v: str) -> str:
-        if not CODEC_REGISTRY.get_handler(v):
+        if v.lower() not in CODECS:
             raise ValueError(f"Unsupported codec: {v}")
         return v
+
+    @property
+    def codec_config(self) -> CodecConfig:
+        return CODECS[self.codec.lower()]
 
     def get_filename_suffix(self) -> str:
         """Return filename suffix (override in subclasses, e.g. '_avsync')."""
@@ -295,83 +126,54 @@ class BaseVideoConfig(BaseModel):
         if self.output_filename:
             filename = self.output_filename
         else:
-            handler = CODEC_REGISTRY.get_handler(self.codec)
-            if not handler:
-                raise ValueError(f"Unknown codec: {self.codec}")
-            ext = handler.get_container()
+            ext = self.codec_config.container
             suffix = self.get_filename_suffix()
-            base = f"{self.height}p_{self.fps}fps_{self.codec}"
-            filename = f"{base}{suffix}.{ext}"
-
+            filename = f"{self.height}p_{self.fps}fps_{self.codec}{suffix}.{ext}"
         return self.output_dir / filename
 
-    def calculate_bitrate(self, formula: Optional[str] = None) -> str:
-        """Calculate bitrate from formula."""
-        formula = formula or self.bitrate_formula
-        if not formula:
-            # Default formula
-            formula = DEFAULT_BITRATE_FORMULA
-
-        # Security: Only allow safe arithmetic operations
-        allowed_chars = set("0123456789+-*/.()abcdefghijklmnopqrstuvwxyz_ ")
-        if not all(c in allowed_chars for c in formula.lower()):
-            raise ValueError("Invalid characters in bitrate formula")
-
-        # Block dangerous patterns
-        dangerous = ["import", "exec", "eval", "__", "open", "file"]
-        if any(d in formula.lower() for d in dangerous):
-            raise ValueError("Dangerous pattern detected in bitrate formula")
-
-        # Evaluate with only width, height, fps in scope
-        try:
-            result = eval(
-                formula,
-                {"__builtins__": {}},
-                {"width": self.width, "height": self.height, "fps": self.fps},
-            )
-            # Convert to bitrate string (bits per second)
-            if result >= 1000000:
-                return f"{int(result / 1000000)}M"
-            elif result >= 1000:
-                return f"{int(result / 1000)}k"
-            else:
-                return f"{int(result)}"
-        except Exception as e:
-            raise ValueError(f"Error evaluating bitrate formula: {e}")
-
-    def get_bitrate(self, global_formula: Optional[str] = None) -> str:
-        """Get bitrate, calculating if needed."""
+    def get_bitrate(self, global_bits_per_pixel: Optional[float] = None) -> str:
+        """Explicit bitrate, or width * height * fps * bits_per_pixel."""
         if self.bitrate:
             return self.bitrate
-
-        formula = self.bitrate_formula or global_formula
-        return self.calculate_bitrate(formula)
+        bpp = (
+            self.bits_per_pixel
+            or global_bits_per_pixel
+            or DEFAULT_BITS_PER_PIXEL
+        )
+        bits = self.width * self.height * self.fps * bpp
+        if bits >= 1_000_000:
+            return f"{int(bits / 1_000_000)}M"
+        if bits >= 1_000:
+            return f"{int(bits / 1_000)}k"
+        return str(int(bits))
 
     def _build_encoding_args(
-        self,
-        handler: CodecHandler,
-        global_bitrate_formula: Optional[str] = None,
+        self, global_bits_per_pixel: Optional[float] = None
     ) -> List[str]:
         """Return common encoding args for video."""
-        gop_size = int(self.fps * 2)
-        bitrate = self.get_bitrate(global_bitrate_formula)
-        enc = [
+        cfg = self.codec_config
+        gop_size = self.fps * 2
+        args = [
             "-c:v",
-            handler.get_encoder(),
+            cfg.encoder,
             "-pix_fmt",
             self.pix_fmt,
             "-b:v",
-            bitrate,
+            self.get_bitrate(global_bits_per_pixel),
         ]
-        return (
-            enc
-            + handler.get_speed_param(self.preset)
-            + handler.get_essential_params(gop_size)
-            + handler.get_codec_params()
-        )
+        if cfg.speed_type == "preset":
+            args += ["-preset", self.preset]
+        elif cfg.speed_type == "cpu_used":
+            args += ["-cpu-used", "0"]
+        args += ["-threads", "1", "-g", str(gop_size)]
+        if cfg.keyint_min:
+            args += ["-keyint_min", str(gop_size)]
+        if cfg.sc_threshold:
+            args += ["-sc_threshold", "0"]
+        return args + cfg.extra_essential + cfg.codec_params
 
     def build_ffmpeg_command(
-        self, global_bitrate_formula: Optional[str] = None
+        self, global_bits_per_pixel: Optional[float] = None
     ) -> List[str]:
         """Build FFmpeg command for this config. Subclasses must override."""
         raise NotImplementedError
@@ -383,44 +185,31 @@ class TestPatternVideoConfig(BaseVideoConfig):
     test_pattern: str = "testsrc2"
 
     def build_ffmpeg_command(
-        self, global_bitrate_formula: Optional[str] = None
+        self, global_bits_per_pixel: Optional[float] = None
     ) -> List[str]:
         """Build FFmpeg command for test pattern scenario."""
-        handler = CODEC_REGISTRY.get_handler(self.codec)
-        if not handler:
-            raise ValueError(f"Unknown codec: {self.codec}")
-
-        cmd = ["ffmpeg"]
-        cmd.extend(["-bitexact", "-fflags", "+bitexact"])
-
-        test_pattern_str = (
+        source = (
             f"{self.test_pattern}=size={self.width}x{self.height}:"
             f"rate={self.fps}:duration={self.duration}"
         )
-        cmd.extend(["-f", "lavfi", "-i", test_pattern_str])
-
-        cmd.extend(self._build_encoding_args(handler, global_bitrate_formula))
-        cmd.extend(["-map_metadata", "-1"])
-        cmd.extend(self.extra_params)
-        cmd.append(str(self.get_output_path()))
-
-        return cmd
+        return (
+            ["ffmpeg", "-bitexact", "-fflags", "+bitexact"]
+            + ["-f", "lavfi", "-i", source]
+            + self._build_encoding_args(global_bits_per_pixel)
+            + ["-map_metadata", "-1"]
+            + self.extra_params
+            + [str(self.get_output_path())]
+        )
 
 
 class AvSyncVideoConfig(BaseVideoConfig):
     """Configuration for AV sync test videos (beep every second)."""
 
+    duration: float = Field(
+        ge=0.1, description="AV sync requires duration >= 0.1 seconds"
+    )
     audio_frequency: int = 1000
     beep_duration: float = 0.1
-
-    @field_validator("duration")
-    @classmethod
-    def validate_duration_av_sync(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("must be positive")
-        if v < 0.1:
-            raise ValueError("AV sync scenario requires duration >= 0.1 seconds")
-        return v
 
     def get_filename_suffix(self) -> str:
         """Return '_avsync' suffix for AV sync output filenames."""
@@ -455,240 +244,120 @@ class AvSyncVideoConfig(BaseVideoConfig):
         return "; ".join(video_filters + beep_filters + [amix_filter])
 
     def build_ffmpeg_command(
-        self, global_bitrate_formula: Optional[str] = None
+        self, global_bits_per_pixel: Optional[float] = None
     ) -> List[str]:
         """Build FFmpeg command for AV sync scenario."""
-        handler = CODEC_REGISTRY.get_handler(self.codec)
-        if not handler:
-            raise ValueError(f"Unknown codec: {self.codec}")
-
-        cmd = ["ffmpeg"]
-
-        cmd.extend(
-            [
-                "-f",
-                "lavfi",
-                "-i",
-                f"color=c=black:s={self.width}x{self.height}:"
-                f"d={self.duration}:r={self.fps}",
-            ]
+        color_src = (
+            f"color=c=black:s={self.width}x{self.height}:"
+            f"d={self.duration}:r={self.fps}"
         )
-        cmd.extend(
-            [
-                "-f",
-                "lavfi",
-                "-i",
-                f"aevalsrc=0:d={self.duration}:s=48000",
-            ]
+        silence_src = f"aevalsrc=0:d={self.duration}:s=48000"
+        sine_src = (
+            f"sine=frequency={self.audio_frequency}:"
+            f"duration={self.beep_duration}"
         )
-        sine_spec = (
-            f"sine=frequency={self.audio_frequency}:" f"duration={self.beep_duration}"
+        audio_codec = (
+            "aac" if self.codec_config.container == "mp4" else "libopus"
         )
-        cmd.extend(["-f", "lavfi", "-i", sine_spec])
-
-        filter_complex = self._build_filter_complex()
-        cmd.extend(["-filter_complex", filter_complex])
-        cmd.extend(["-map", "[v]", "-map", "[a]"])
-
-        cmd.extend(self._build_encoding_args(handler, global_bitrate_formula))
-
-        container = handler.get_container()
-        if container == "mp4":
-            cmd.extend(["-c:a", "aac"])
-        else:
-            cmd.extend(["-c:a", "libopus"])
-        cmd.extend(["-b:a", "128k"])
-        cmd.extend(["-t", str(self.duration)])
-        cmd.append(str(self.get_output_path()))
-
-        return cmd
+        return (
+            ["ffmpeg"]
+            + ["-f", "lavfi", "-i", color_src]
+            + ["-f", "lavfi", "-i", silence_src]
+            + ["-f", "lavfi", "-i", sine_src]
+            + ["-filter_complex", self._build_filter_complex()]
+            + ["-map", "[v]", "-map", "[a]"]
+            + self._build_encoding_args(global_bits_per_pixel)
+            + ["-c:a", audio_codec, "-b:a", "128k"]
+            + ["-t", str(self.duration)]
+            + [str(self.get_output_path())]
+        )
 
 
-# Scenario registry: config class, extra kwargs, forbidden keys per scenario
-SCENARIO_REGISTRY: Dict[str, Dict[str, Any]] = {
-    "test_pattern": {
-        "config_class": TestPatternVideoConfig,
-        "extra_kwargs": ["test_pattern"],
-        "extra_defaults": {"test_pattern": "testsrc2"},
-        "forbidden_keys": {"audio_frequency", "beep_duration"},
-    },
-    "av_sync": {
-        "config_class": AvSyncVideoConfig,
-        "extra_kwargs": ["audio_frequency", "beep_duration"],
-        "extra_defaults": {"audio_frequency": 1000, "beep_duration": 0.1},
-        "forbidden_keys": {"test_pattern"},
-    },
+SCENARIOS: Dict[str, type] = {
+    "test_pattern": TestPatternVideoConfig,
+    "av_sync": AvSyncVideoConfig,
 }
 
 
-def create_config_from_merged(
-    merged: Dict[str, Any],
-    width: int,
-    height: int,
-    output_dir: Path,
-) -> BaseVideoConfig:
-    """Build video config from merged dict (used by batch and CLI)."""
-    scenario = merged.get("scenario", "test_pattern")
-    if scenario not in SCENARIO_REGISTRY:
-        raise ValueError(
-            f"Unknown scenario: {scenario}. "
-            f"Must be one of: {sorted(SCENARIO_REGISTRY.keys())}"
-        )
+class BatchConfig(BaseModel):
+    """Schema of a batch config file (JSON or YAML)."""
 
-    spec = SCENARIO_REGISTRY[scenario]
-    config_class = spec["config_class"]
-    extra_defaults = spec["extra_defaults"]
+    model_config = ConfigDict(extra="forbid")
 
-    base_kwargs = {
-        "width": width,
-        "height": height,
-        "fps": merged["fps"],
-        "codec": merged["codec"],
-        "duration": merged["duration"],
-        "bitrate": merged.get("bitrate"),
-        "pix_fmt": merged.get("pix_fmt", "yuv420p"),
-        "output_dir": output_dir,
-        "output_filename": merged.get("output_filename"),
-        "skip_existing": merged.get("skip_existing", True),
-        "preset": merged.get("preset", "veryslow"),
-        "bitrate_formula": merged.get("bitrate_formula"),
-        "extra_params": merged.get("extra_params", []),
-    }
-
-    extra_kwargs = {k: merged.get(k, extra_defaults[k]) for k in spec["extra_kwargs"]}
-
-    return config_class(**base_kwargs, **extra_kwargs)
+    videos: List[Dict[str, Any]] = Field(min_length=1)
+    defaults: Dict[str, Any] = {}
+    bits_per_pixel: Optional[float] = Field(default=None, gt=0)
 
 
-def parse_resolution(
-    resolution: Optional[str] = None,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
-) -> Tuple[int, int]:
-    """Parse resolution from various formats."""
-    if width and height:
-        return (width, height)
+def load_batch_config(config_path: Path) -> BatchConfig:
+    """Load and validate a batch config file (YAML superset covers JSON)."""
+    return BatchConfig.model_validate(yaml.safe_load(config_path.read_text()))
 
-    if not resolution:
-        raise ValueError(
-            "Resolution must be provided (--resolution or --width/--height)"
-        )
 
-    # Check presets (case-insensitive)
-    resolution_lower = resolution.lower()
-    if resolution_lower in RESOLUTION_PRESETS:
-        return RESOLUTION_PRESETS[resolution_lower]
-    # Also check uppercase for "4K", "UHD", "8K"
-    resolution_upper = resolution.upper()
-    if resolution_upper in RESOLUTION_PRESETS:
-        return RESOLUTION_PRESETS[resolution_upper]
-
-    # Parse explicit format (e.g., "1920x1080" or "1920:1080")
+def parse_resolution(resolution: str) -> Tuple[int, int]:
+    """Parse a resolution preset ('1080p', '4K') or '1920x1080' string."""
+    preset = RESOLUTION_PRESETS.get(resolution.lower())
+    if preset:
+        return preset
     match = re.match(r"^(\d+)[x:](\d+)$", resolution)
     if match:
         return (int(match.group(1)), int(match.group(2)))
-
     raise ValueError(f"Invalid resolution format: {resolution}")
 
 
-def load_config(config_path: Path) -> Dict[str, Any]:
-    """Load configuration from JSON or YAML file."""
-    with open(config_path, "r") as f:
-        if config_path.suffix.lower() in [".yaml", ".yml"]:
-            if yaml is None:
-                raise ImportError(
-                    "PyYAML is required for YAML config files. "
-                    "Install with: pip install pyyaml"
-                )
-            return yaml.safe_load(f)
-        else:
-            return json.load(f)
+def build_video_config(video: Dict[str, Any]) -> BaseVideoConfig:
+    """Build a validated video config from a merged dict.
 
-
-def validate_config(config: Dict[str, Any]):
-    """Validate configuration structure."""
-    if "videos" not in config:
+    Resolves 'scenario' to the config class and 'resolution' to
+    width/height; everything else is validated by the model
+    (extra='forbid' rejects unknown and cross-scenario keys).
+    """
+    video = dict(video)
+    scenario = video.pop("scenario", "test_pattern")
+    if scenario not in SCENARIOS:
         raise ValueError(
-            "Config file must contain 'videos' key "
-            "with a list of video configurations"
+            f"Unknown scenario: {scenario}. "
+            f"Must be one of: {sorted(SCENARIOS)}"
         )
-    if not isinstance(config["videos"], list):
-        raise ValueError("'videos' must be a list")
-    if len(config["videos"]) == 0:
-        raise ValueError("'videos' list cannot be empty")
+    if "resolution" in video:
+        resolution = video.pop("resolution")
+        if not ("width" in video and "height" in video):
+            video["width"], video["height"] = parse_resolution(resolution)
+    return SCENARIOS[scenario].model_validate(video)
 
 
-def validate_config_for_scenario(config: Dict[str, Any]) -> None:
-    """Validate scenario-specific args (no cross-scenario keys)."""
-    defaults = config.get("defaults", {})
-    scenario = defaults.get("scenario", "test_pattern")
-
-    if scenario not in SCENARIO_REGISTRY:
-        allowed = sorted(SCENARIO_REGISTRY.keys())
-        raise ValueError(f"defaults.scenario must be one of: {allowed}")
-
-    forbidden_keys = SCENARIO_REGISTRY[scenario]["forbidden_keys"]
-
-    def check_keys(d: Dict[str, Any], label: str) -> None:
-        keys = set(d.keys())
-        bad = keys & forbidden_keys
-        if bad:
-            raise ValueError(
-                f"{label}: scenario '{scenario}' cannot have {sorted(bad)}"
-            )
-
-    check_keys(defaults, "defaults")
-
-    for idx, video in enumerate(config["videos"]):
-        check_keys(video, f"videos[{idx}]")
-
-
-def merge_configs(
-    defaults: Dict[str, Any],
-    video_config: Dict[str, Any],
+def merge_batch_video(
+    config: BatchConfig, video: Dict[str, Any], cli_output_dir: str
 ) -> Dict[str, Any]:
-    """Merge configurations with priority: defaults < video_config."""
-    merged = {}
-    merged.update(defaults or {})
-    merged.update(video_config)
-    return merged
+    """Merge one batch entry: video > CLI --output-dir > defaults."""
+    return {**config.defaults, "output_dir": cli_output_dir, **video}
 
 
 def format_time(seconds: float) -> str:
     """Format time in human-readable format."""
     if seconds < 60:
         return f"{seconds:.1f}s"
-    elif seconds < 3600:
-        minutes = int(seconds // 60)
-        secs = seconds % 60
-        return f"{minutes}m {secs:.1f}s"
-    else:
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = seconds % 60
-        return f"{hours}h {minutes}m {secs:.1f}s"
+    return f"{int(seconds // 60)}m {seconds % 60:.1f}s"
 
 
 def generate_video(
     config: BaseVideoConfig,
-    global_bitrate_formula: Optional[str] = None,
+    global_bits_per_pixel: Optional[float] = None,
 ) -> bool:
     """Generate a single video."""
     output_path = config.get_output_path()
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if config.skip_existing and output_path.exists():
         print(f"Skipping {output_path.name} (already exists)")
         return False
 
-    handler = CODEC_REGISTRY.get_handler(config.codec)
-    if not handler or not CODEC_REGISTRY.check_codec_available(config.codec):
-        encoder_name = handler.get_encoder() if handler else config.codec
-        print(f"ERROR: Codec encoder '{encoder_name}' " "is not available in FFmpeg")
+    encoder = config.codec_config.encoder
+    if not encoder_available(encoder):
+        print(f"ERROR: Codec encoder '{encoder}' is not available in FFmpeg")
         return False
 
-    cmd = config.build_ffmpeg_command(global_bitrate_formula)
+    cmd = config.build_ffmpeg_command(global_bits_per_pixel)
     print(f"Generating {output_path.name}...")
     print(f"Command: {' '.join(cmd)}")
 
@@ -704,6 +373,52 @@ def generate_video(
         return False
 
 
+def run_batch(args: argparse.Namespace) -> int:
+    """Run batch mode: config-driven only, no CLI overrides."""
+    config_path = Path(args.config)
+    if not config_path.exists():
+        print(f"ERROR: Config file not found: {config_path}")
+        return 1
+
+    try:
+        config = load_batch_config(config_path)
+    except (ValidationError, ValueError) as e:
+        print(f"ERROR: Config validation failed: {e}")
+        return 1
+
+    total = len(config.videos)
+    success_count = 0
+    for idx, video in enumerate(config.videos, 1):
+        try:
+            video_config = build_video_config(
+                merge_batch_video(config, video, args.output_dir)
+            )
+        except (ValidationError, ValueError) as e:
+            print(f"ERROR: Video {idx}/{total} config invalid: {e}")
+            continue
+
+        print(f"\n[{idx}/{total}] Processing video configuration...")
+        if generate_video(video_config, config.bits_per_pixel):
+            success_count += 1
+
+    print(f"\n✓ Generated {success_count}/{total} videos successfully")
+    return 0 if success_count == total else 1
+
+
+def run_validate(args: argparse.Namespace) -> int:
+    """Validate a batch config file without encoding anything."""
+    config_path = Path(args.config)
+    try:
+        config = load_batch_config(config_path)
+        for video in config.videos:
+            build_video_config(merge_batch_video(config, video, "."))
+    except (ValidationError, ValueError, OSError) as e:
+        print(f"ERROR: {config_path}: {e}")
+        return 1
+    print(f"{config_path}: {len(config.videos)} video configs OK")
+    return 0
+
+
 def add_generic_args(parser: argparse.ArgumentParser) -> None:
     """Add generic arguments shared by test_pattern and av_sync subcommands."""
     resolution_group = parser.add_mutually_exclusive_group()
@@ -716,8 +431,12 @@ def add_generic_args(parser: argparse.ArgumentParser) -> None:
     resolution_group.add_argument(
         "--width", type=int, help="Video width (use with --height)"
     )
-    parser.add_argument("--height", type=int, help="Video height (use with --width)")
-    parser.add_argument("--fps", type=int, required=True, help="Frames per second")
+    parser.add_argument(
+        "--height", type=int, help="Video height (use with --width)"
+    )
+    parser.add_argument(
+        "--fps", type=int, required=True, help="Frames per second"
+    )
     parser.add_argument(
         "--codec",
         type=str,
@@ -730,7 +449,9 @@ def add_generic_args(parser: argparse.ArgumentParser) -> None:
         required=True,
         help="Duration in seconds",
     )
-    parser.add_argument("--bitrate", type=str, help="Bitrate (e.g., '40M', '5000k')")
+    parser.add_argument(
+        "--bitrate", type=str, help="Bitrate (e.g., '40M', '5000k')"
+    )
     parser.add_argument(
         "--pix-fmt",
         type=str,
@@ -761,77 +482,38 @@ def add_generic_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def run_batch(args: argparse.Namespace) -> int:
-    """Run batch mode: config-driven only, no CLI overrides."""
-    config_path = Path(args.config)
-    if not config_path.exists():
-        print(f"ERROR: Config file not found: {config_path}")
-        return 1
+def run_single_video(args: argparse.Namespace) -> int:
+    """Run single video generation (test_pattern or av_sync)."""
+    video = {
+        "scenario": args.command,
+        "width": args.width,
+        "height": args.height,
+        "fps": args.fps,
+        "codec": args.codec,
+        "duration": args.duration,
+        "bitrate": args.bitrate,
+        "pix_fmt": args.pix_fmt,
+        "output_dir": args.output_dir,
+        "output_filename": args.output_filename,
+        "skip_existing": not args.no_skip_existing,
+        "preset": args.preset,
+    }
+    if args.resolution:
+        video["resolution"] = args.resolution
+        del video["width"], video["height"]
+    if args.command == "test_pattern":
+        video["test_pattern"] = args.test_pattern
+    else:
+        video["audio_frequency"] = args.audio_frequency
+        video["beep_duration"] = args.beep_duration
 
-    config_data = load_config(config_path)
     try:
-        validate_config(config_data)
-        validate_config_for_scenario(config_data)
-    except ValueError as e:
-        print(f"ERROR: Config validation failed: {e}")
+        video_config = build_video_config(video)
+    except (ValidationError, ValueError) as e:
+        print(f"ERROR: Invalid config: {e}")
         return 1
 
-    defaults = config_data.get("defaults", {})
-    # Override output_dir from batch --output-dir
-    defaults = dict(defaults, output_dir=Path(args.output_dir))
-    global_bitrate_formula = config_data.get("bitrate_formula")
-
-    videos = config_data["videos"]
-    total = len(videos)
-    success_count = 0
-
-    for idx, video_data in enumerate(videos, 1):
-        merged = merge_configs(defaults, video_data)
-
-        try:
-            if "width" in merged and "height" in merged:
-                width, height = merged["width"], merged["height"]
-            elif "resolution" in merged:
-                res = merged["resolution"]
-                width, height = parse_resolution(resolution=res)
-            else:
-                print(
-                    f"ERROR: Video {idx}/{total} missing resolution or " "width/height"
-                )
-                continue
-        except ValueError as e:
-            print(f"ERROR: Video {idx}/{total} has invalid resolution: {e}")
-            continue
-
-        output_dir = Path(merged.get("output_dir", args.output_dir))
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        fps = merged.get("fps")
-        codec = merged.get("codec")
-        duration = merged.get("duration")
-        if fps is None or codec is None or duration is None:
-            print(
-                f"ERROR: Video {idx}/{total} is missing required fields "
-                "(fps, codec, duration)"
-            )
-            continue
-
-        merged_with_dims = dict(merged, width=width, height=height)
-
-        try:
-            video_config = create_config_from_merged(
-                merged_with_dims, width, height, output_dir
-            )
-        except ValidationError as e:
-            print(f"ERROR: Video {idx}/{total} config invalid: {e}")
-            continue
-
-        print(f"\n[{idx}/{total}] Processing video configuration...")
-        if generate_video(video_config, global_bitrate_formula):
-            success_count += 1
-
-    print(f"\n✓ Generated {success_count}/{total} videos successfully")
-    return 0 if success_count == total else 1
+    return 0 if generate_video(video_config) else 1
 
 
 def main():
@@ -842,7 +524,6 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # test_pattern subcommand
     sp_test = subparsers.add_parser(
         "test_pattern",
         help="Generate golden videos with lavfi test sources",
@@ -855,7 +536,6 @@ def main():
         help="Test pattern (default: testsrc2)",
     )
 
-    # av_sync subcommand
     sp_av = subparsers.add_parser(
         "av_sync",
         help="Generate AV sync test videos (beep every second)",
@@ -874,7 +554,6 @@ def main():
         help="Beep duration in seconds (default: 0.1)",
     )
 
-    # batch subcommand
     sp_batch = subparsers.add_parser(
         "batch",
         help="Batch generation from config file (config-driven only)",
@@ -892,65 +571,27 @@ def main():
         help="Output directory for generated videos",
     )
 
+    sp_validate = subparsers.add_parser(
+        "validate",
+        help="Validate a batch config file without encoding",
+    )
+    sp_validate.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Configuration file (JSON or YAML)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "batch":
         sys.exit(run_batch(args))
+    if args.command == "validate":
+        sys.exit(run_validate(args))
 
-    sys.exit(run_single_video(args, sp_test, sp_av))
-
-
-def run_single_video(
-    args: argparse.Namespace,
-    sp_test: argparse.ArgumentParser,
-    sp_av: argparse.ArgumentParser,
-) -> int:
-    """Run single video generation (test_pattern or av_sync)."""
     if not args.resolution and not (args.width and args.height):
-        subparser = sp_test if args.command == "test_pattern" else sp_av
-        subparser.error("--resolution or --width/--height is required")
-
-    width, height = parse_resolution(args.resolution, args.width, args.height)
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        video_config = _build_config_from_args(args, width, height, output_dir)
-    except ValidationError as e:
-        print(f"ERROR: Invalid config: {e}")
-        return 1
-
-    success = generate_video(video_config)
-    return 0 if success else 1
-
-
-def _build_config_from_args(
-    args: argparse.Namespace,
-    width: int,
-    height: int,
-    output_dir: Path,
-) -> BaseVideoConfig:
-    """Build video config from CLI args for test_pattern or av_sync."""
-    merged = {
-        "width": width,
-        "height": height,
-        "fps": args.fps,
-        "codec": args.codec,
-        "duration": args.duration,
-        "bitrate": args.bitrate,
-        "pix_fmt": args.pix_fmt,
-        "output_dir": output_dir,
-        "output_filename": args.output_filename,
-        "skip_existing": not args.no_skip_existing,
-        "preset": args.preset,
-        "extra_params": [],
-        "scenario": args.command,
-    }
-    spec = SCENARIO_REGISTRY[args.command]
-    for key in spec["extra_kwargs"]:
-        merged[key] = getattr(args, key)
-
-    return create_config_from_merged(merged, width, height, output_dir)
+        parser.error("--resolution or --width/--height is required")
+    sys.exit(run_single_video(args))
 
 
 if __name__ == "__main__":
