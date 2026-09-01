@@ -1,89 +1,34 @@
 # yaml-language-server: $schema=../config.schema.json
-# AV sync test video set - black background with white flash + beep every second
-# Uses scenario: av_sync (no test_pattern; generated via color, aevalsrc, sine)
-
+# AV sync test video set - black background with white flash + beep every
+# second. Uses scenario: av_sync (generated via color, aevalsrc, sine).
 videos:
-  # 640x480 videos
-  - resolution: 640x480
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 640x480
-    fps: 30
-    codec: h265
-    duration: 10
+  # 640x480 (VGA)
+  - {resolution: 640x480, fps: 30, codec: h264, duration: 10}
+  - {resolution: 640x480, fps: 30, codec: h265, duration: 10}
 
-  # 1280x720 videos
-  - resolution: 1280x720
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 1280x720
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 1280x720
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 1280x720
-    fps: 60
-    codec: h265
-    duration: 10
+  # 1280x720
+  - {resolution: 1280x720, fps: 30, codec: h264, duration: 10}
+  - {resolution: 1280x720, fps: 30, codec: h265, duration: 10}
+  - {resolution: 1280x720, fps: 60, codec: h264, duration: 10}
+  - {resolution: 1280x720, fps: 60, codec: h265, duration: 10}
 
-  # 1920x1080 videos
-  - resolution: 1920x1080
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 1920x1080
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 1920x1080
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 1920x1080
-    fps: 60
-    codec: h265
-    duration: 10
+  # 1920x1080
+  - {resolution: 1920x1080, fps: 30, codec: h264, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: h265, duration: 10}
+  - {resolution: 1920x1080, fps: 60, codec: h264, duration: 10}
+  - {resolution: 1920x1080, fps: 60, codec: h265, duration: 10}
 
-  # 3840x2160 (UHD) videos
-  - resolution: 3840x2160
-    fps: 30
-    codec: vp9
-    duration: 10
-  - resolution: 3840x2160
-    fps: 60
-    codec: vp9
-    duration: 10
+  # 3840x2160 (UHD)
+  - {resolution: 3840x2160, fps: 30, codec: vp9, duration: 10}
+  - {resolution: 3840x2160, fps: 60, codec: vp9, duration: 10}
 
-  # 4096x2160 (DCI 4K) videos
-  - resolution: 4096x2160
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 4096x2160
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 4096x2160
-    fps: 30
-    codec: vp9
-    duration: 10
-  - resolution: 4096x2160
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 4096x2160
-    fps: 60
-    codec: h265
-    duration: 10
-  - resolution: 4096x2160
-    fps: 60
-    codec: vp9
-    duration: 10
+  # 4096x2160 (DCI 4K)
+  - {resolution: 4096x2160, fps: 30, codec: h264, duration: 10}
+  - {resolution: 4096x2160, fps: 30, codec: h265, duration: 10}
+  - {resolution: 4096x2160, fps: 30, codec: vp9, duration: 10}
+  - {resolution: 4096x2160, fps: 60, codec: h264, duration: 10}
+  - {resolution: 4096x2160, fps: 60, codec: h265, duration: 10}
+  - {resolution: 4096x2160, fps: 60, codec: vp9, duration: 10}
 
 defaults:
   scenario: av_sync
