@@ -33,7 +33,7 @@ Priority: video entry > `defaults` > built-in default.
 | `bits_per_pixel` | float | top-level value, else `0.1` | Bitrate = `width * height * fps * bits_per_pixel` |
 | `pix_fmt` | string | `yuv420p` | FFmpeg pixel format |
 | `preset` | string | `veryslow` | FFmpeg speed preset |
-| `output_dir` | string | batch `--output-dir` | Where the file lands (CLI `--output-dir` overrides `defaults.output_dir`) |
+| `output_dir` | string | batch `--output-dir` | Per-video override for where the file lands. A defaults-level `output_dir` never takes effect in batch mode — the required `--output-dir` flag always replaces it |
 | `output_filename` | string | `{width}x{height}_{fps}fps_{codec}[_avsync].{ext}` | Custom filename |
 | `skip_existing` | bool | `true` | Skip generation when the output file exists |
 | `extra_params` | list of strings | `[]` | Extra FFmpeg args appended to the command |
@@ -81,7 +81,6 @@ videos:
 defaults:
   scenario: test_pattern   # or av_sync (then audio_frequency/beep_duration apply)
   preset: veryslow
-  output_dir: video
 
 bits_per_pixel: 0.1        # optional; this is the default
 ```

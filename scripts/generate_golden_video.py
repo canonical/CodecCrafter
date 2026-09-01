@@ -104,8 +104,8 @@ class BaseVideoConfig(BaseModel):
     pix_fmt: str = Field(default="yuv420p", description="FFmpeg pixel format")
     output_dir: Path = Field(
         default=Path("."),
-        description="Output directory (the batch --output-dir option "
-        "overrides the defaults-level value)",
+        description="Per-video output directory override; in batch mode "
+        "the required --output-dir flag replaces any defaults-level value",
     )
     output_filename: Optional[str] = Field(
         default=None,

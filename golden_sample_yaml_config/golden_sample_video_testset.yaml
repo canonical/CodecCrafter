@@ -52,6 +52,10 @@ videos:
   - {resolution: 4096x2160, fps: 60, codec: h265, duration: 10}
   - {resolution: 4096x2160, fps: 60, codec: vp9, duration: 10}
 
+# Encode-affecting parameters are pinned here on purpose, even where they
+# equal the script's built-in defaults: golden output must not change if a
+# code-level default ever does. Workflow knobs (output_dir, skip_existing)
+# belong to the workflow/CLI, not this file.
 defaults:
   scenario: test_pattern
   pix_fmt: yuv420p

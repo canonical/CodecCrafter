@@ -24,6 +24,12 @@ on:
 permissions:
   contents: write
 
+# Serialize generate runs: overlapping runs would race committing the same
+# video files. Queued runs wait instead of cancelling.
+concurrency:
+  group: generate-videos-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
 jobs:
   # PR schema check: every yaml/json config (golden, example, codecs.yaml
   # via import) must validate. Fast — no ffmpeg needed.
@@ -86,6 +92,9 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - id: plan
         run: |
           pip install pyyaml

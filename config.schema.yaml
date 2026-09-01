@@ -103,8 +103,8 @@ $defs:
         type: string
       output_dir:
         default: .
-        description: Output directory (the batch --output-dir option overrides the
-          defaults-level value)
+        description: Per-video output directory override; in batch mode the required
+          --output-dir flag replaces any defaults-level value
         format: path
         title: Output Dir
         type: string
