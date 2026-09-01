@@ -49,13 +49,13 @@ pip install -r requirements.txt
 ### Generate a Single Video
 
 ```bash
-# 1080p H.264 test pattern
+# 1920x1080 H.264 test pattern
 ./scripts/generate_golden_video.py test_pattern \
-  --resolution 1080p --fps 30 --codec h264 --duration 10
+  --resolution 1920x1080 --fps 30 --codec h264 --duration 10
 
 # AV sync test video (white flash + beep every second)
 ./scripts/generate_golden_video.py av_sync \
-  --resolution 1080p --fps 30 --codec h264 --duration 10
+  --resolution 1920x1080 --fps 30 --codec h264 --duration 10
 
 # Explicit dimensions
 ./scripts/generate_golden_video.py test_pattern \

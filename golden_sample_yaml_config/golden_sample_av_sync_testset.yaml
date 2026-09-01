@@ -3,84 +3,84 @@
 # Uses scenario: av_sync (no test_pattern; generated via color, aevalsrc, sine)
 
 videos:
-  # 480p videos
-  - resolution: 480p
+  # 640x480 videos
+  - resolution: 640x480
     fps: 30
     codec: h264
     duration: 10
-  - resolution: 480p
+  - resolution: 640x480
     fps: 30
     codec: h265
     duration: 10
 
-  # 720p videos
-  - resolution: 720p
+  # 1280x720 videos
+  - resolution: 1280x720
     fps: 30
     codec: h264
     duration: 10
-  - resolution: 720p
-    fps: 30
-    codec: h265
-    duration: 10
-  - resolution: 720p
-    fps: 60
-    codec: h264
-    duration: 10
-  - resolution: 720p
-    fps: 60
-    codec: h265
-    duration: 10
-
-  # 1080p videos
-  - resolution: 1080p
-    fps: 30
-    codec: h264
-    duration: 10
-  - resolution: 1080p
+  - resolution: 1280x720
     fps: 30
     codec: h265
     duration: 10
-  - resolution: 1080p
+  - resolution: 1280x720
     fps: 60
     codec: h264
     duration: 10
-  - resolution: 1080p
+  - resolution: 1280x720
     fps: 60
     codec: h265
     duration: 10
 
-  # 2160p (UHD) videos
-  - resolution: 2160p
+  # 1920x1080 videos
+  - resolution: 1920x1080
+    fps: 30
+    codec: h264
+    duration: 10
+  - resolution: 1920x1080
+    fps: 30
+    codec: h265
+    duration: 10
+  - resolution: 1920x1080
+    fps: 60
+    codec: h264
+    duration: 10
+  - resolution: 1920x1080
+    fps: 60
+    codec: h265
+    duration: 10
+
+  # 3840x2160 (UHD) videos
+  - resolution: 3840x2160
     fps: 30
     codec: vp9
     duration: 10
-  - resolution: 2160p
+  - resolution: 3840x2160
     fps: 60
     codec: vp9
     duration: 10
 
-  # 4K (4096x2160) videos
-  - resolution: 4K
+  # 4096x2160 (DCI 4K) videos
+  - resolution: 4096x2160
     fps: 30
     codec: h264
     duration: 10
-  - resolution: 4K
+  - resolution: 4096x2160
     fps: 30
     codec: h265
     duration: 10
-  - resolution: 4K
+  - resolution: 4096x2160
     fps: 30
     codec: vp9
     duration: 10
-  - resolution: 4K
+  - resolution: 4096x2160
     fps: 60
     codec: h264
     duration: 10
-  - resolution: 4K
+  - resolution: 4096x2160
     fps: 60
     codec: h265
     duration: 10
-  - resolution: 4K
+  - resolution: 4096x2160
     fps: 60
     codec: vp9
     duration: 10

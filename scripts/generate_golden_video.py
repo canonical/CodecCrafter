@@ -25,17 +25,6 @@ from pydantic import (
     field_validator,
 )
 
-# Resolution presets (keyed lowercase; looked up case-insensitively)
-RESOLUTION_PRESETS = {
-    "480p": (854, 480),
-    "720p": (1280, 720),
-    "1080p": (1920, 1080),
-    "2160p": (3840, 2160),
-    "uhd": (3840, 2160),
-    "4k": (4096, 2160),
-    "8k": (7680, 4320),
-}
-
 # Default bitrate: width * height * fps * bits_per_pixel
 DEFAULT_BITS_PER_PIXEL = 0.1
 
@@ -357,14 +346,14 @@ def load_batch_config(config_path: Path) -> BatchConfig:
 
 
 def parse_resolution(resolution: str) -> Tuple[int, int]:
-    """Parse a resolution preset ('1080p', '4K') or '1920x1080' string."""
-    preset = RESOLUTION_PRESETS.get(resolution.lower())
-    if preset:
-        return preset
+    """Parse an explicit 'WIDTHxHEIGHT' (or 'WIDTH:HEIGHT') string."""
     match = re.match(r"^(\d+)[x:](\d+)$", resolution)
-    if match:
-        return (int(match.group(1)), int(match.group(2)))
-    raise ValueError(f"Invalid resolution format: {resolution}")
+    if not match:
+        raise ValueError(
+            f"Invalid resolution format: {resolution} "
+            "(use explicit WIDTHxHEIGHT, e.g. 1920x1080)"
+        )
+    return (int(match.group(1)), int(match.group(2)))
 
 
 def build_video_config(video: Dict[str, Any]) -> BaseVideoConfig:
@@ -493,9 +482,9 @@ def build_config_schema() -> Dict[str, Any]:
         },
         "resolution": {
             "type": "string",
-            "description": "Resolution preset (480p, 720p, 1080p, 2160p, "
-            "UHD, 4K, 8K) or explicit WIDTHxHEIGHT; alternative to "
-            "width+height",
+            "pattern": "^\\d+[x:]\\d+$",
+            "description": "Explicit WIDTHxHEIGHT (e.g. 1920x1080); "
+            "alternative to width+height",
         },
     }
     for cls in SCENARIOS.values():
@@ -570,8 +559,7 @@ def add_generic_args(parser: argparse.ArgumentParser) -> None:
     resolution_group.add_argument(
         "--resolution",
         type=str,
-        help="Resolution preset (480p, 720p, 1080p, 2160p, 4K, 8K) "
-        "or explicit (1920x1080)",
+        help="Explicit resolution WIDTHxHEIGHT (e.g. 1920x1080)",
     )
     resolution_group.add_argument(
         "--width", type=int, help="Video width (use with --height)"

@@ -69,10 +69,10 @@ jobs:
       - name: Smoke-generate one tiny video per scenario
         run: |
           python scripts/generate_golden_video.py test_pattern \
-            --resolution 480p --fps 30 --codec h264 --duration 1 \
+            --resolution 640x480 --fps 30 --codec h264 --duration 1 \
             --preset ultrafast --output-dir /tmp/smoke-out
           python scripts/generate_golden_video.py av_sync \
-            --resolution 480p --fps 30 --codec h264 --duration 1 \
+            --resolution 640x480 --fps 30 --codec h264 --duration 1 \
             --preset ultrafast --output-dir /tmp/smoke-out
           ls -l /tmp/smoke-out
 

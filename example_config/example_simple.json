@@ -2,7 +2,7 @@
   "$schema": "../config.schema.json",
   "videos": [
     {
-      "resolution": "1080p",
+      "resolution": "1920x1080",
       "fps": 30,
       "codec": "h264",
       "duration": 10

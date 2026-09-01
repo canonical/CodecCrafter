@@ -24,7 +24,7 @@ Priority: video entry > `defaults` > built-in default.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `resolution` | string | — | Preset (`480p`, `720p`, `1080p`, `2160p`/`UHD`, `4K`, `8K`) or explicit `1920x1080` / `1920:1080`. Required unless `width`+`height` given |
+| `resolution` | string | — | Explicit `WIDTHxHEIGHT` (`1920x1080`, also `1920:1080`). Required unless `width`+`height` given |
 | `width`, `height` | int | — | Explicit dimensions; alternative to `resolution` |
 | `fps` | int | required | Frames per second |
 | `codec` | string | required | See codec table below |
@@ -67,7 +67,7 @@ reproducibility flags per codec — edit that file to add or tune codecs):
 
 ```yaml
 videos:
-  - resolution: 1080p
+  - resolution: 1920x1080
     fps: 30
     codec: h264
     duration: 10
