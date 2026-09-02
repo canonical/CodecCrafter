@@ -173,6 +173,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Branch tip, NOT the triggering SHA: main may move during the
+          # hours the matrix encodes (bit us on the first live run).
+          ref: main
       - uses: actions/download-artifact@v4
         with:
           pattern: videos-*
@@ -188,4 +192,4 @@ jobs:
             exit 0
           fi
           git commit -m "Auto-generate golden videos from config"
-          git push
+          git push || { git pull --rebase && git push; }

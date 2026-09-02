@@ -33,9 +33,10 @@ videos:
   - {resolution: 3840x2160, fps: 30, codec: h265, duration: 10}
   - {resolution: 3840x2160, fps: 30, codec: vp9, duration: 10}
   # MJPEG is intra-only full-range JPEG; higher bits_per_pixel because it
-  # has no inter-frame compression.
+  # has no inter-frame compression. Capped at 0.25: GitHub rejects files
+  # over 100 MB (0.5 produced a 102 MB file; 0.25 tops out near 78 MB).
   - {resolution: 3840x2160, fps: 30, codec: mjpeg, duration: 10,
-     pix_fmt: yuvj420p, bits_per_pixel: 0.5}
+     pix_fmt: yuvj420p, bits_per_pixel: 0.25}
   - {resolution: 3840x2160, fps: 60, codec: h264, duration: 10}
   - {resolution: 3840x2160, fps: 60, codec: h265, duration: 10}
   - {resolution: 3840x2160, fps: 60, codec: vp9, duration: 10}
