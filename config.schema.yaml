@@ -126,6 +126,22 @@ $defs:
         description: FFmpeg speed preset
         title: Preset
         type: string
+      h264_profile:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: H.264 profile passed as -profile:v; valid only with the h264
+          codec, e.g. high
+        title: H264 Profile
+      h264_level:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: H.264 level passed as -level:v and verified with ffprobe; valid
+          only with the h264 codec, e.g. '5.2'
+        title: H264 Level
       extra_params:
         default: []
         description: Extra FFmpeg arguments appended to the command
