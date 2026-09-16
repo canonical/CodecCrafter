@@ -23,6 +23,7 @@ from pydantic import (
     Field,
     ValidationError,
     field_validator,
+    model_validator,
 )
 
 # Default bitrate: width * height * fps * bits_per_pixel
@@ -117,6 +118,16 @@ class BaseVideoConfig(BaseModel):
         description="Skip generation when the output file already exists",
     )
     preset: str = Field(default="veryslow", description="FFmpeg speed preset")
+    h264_profile: Optional[str] = Field(
+        default=None,
+        description="H.264 profile passed as -profile:v; valid only with "
+        "the h264 codec, e.g. high",
+    )
+    h264_level: Optional[str] = Field(
+        default=None,
+        description="H.264 level passed as -level:v and verified with "
+        "ffprobe; valid only with the h264 codec, e.g. '5.2'",
+    )
     extra_params: List[str] = Field(
         default=[],
         description="Extra FFmpeg arguments appended to the command",
@@ -128,6 +139,21 @@ class BaseVideoConfig(BaseModel):
         if v.lower() not in CODECS:
             raise ValueError(f"Unsupported codec: {v}")
         return v
+
+    @field_validator("h264_profile", "h264_level")
+    @classmethod
+    def validate_non_empty_optional(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("must not be empty")
+        return v
+
+    @model_validator(mode="after")
+    def validate_h264_options(self) -> "BaseVideoConfig":
+        if (
+            self.h264_profile is not None or self.h264_level is not None
+        ) and self.codec_config.encoder != "libx264":
+            raise ValueError("h264_profile/h264_level require codec: h264")
+        return self
 
     @property
     def codec_config(self) -> CodecConfig:
@@ -182,6 +208,10 @@ class BaseVideoConfig(BaseModel):
             "-b:v",
             self.get_bitrate(global_bits_per_pixel),
         ]
+        if self.h264_profile:
+            args += ["-profile:v", self.h264_profile]
+        if self.h264_level:
+            args += ["-level:v", self.h264_level]
         if cfg.speed_type == "preset":
             args += ["-preset", self.preset]
         elif cfg.speed_type == "cpu_used":
@@ -397,6 +427,86 @@ def format_time(seconds: float) -> str:
     return f"{int(seconds // 60)}m {seconds % 60:.1f}s"
 
 
+def normalize_h264_profile(profile: str) -> str:
+    """Normalize profile names from config/ffprobe for comparison."""
+    return re.sub(r"[^a-z0-9]", "", profile.lower())
+
+
+def parse_h264_level(level: str) -> int:
+    """Convert '5.2' or '52' to ffprobe's integer H.264 level form."""
+    level = level.strip()
+    if re.fullmatch(r"\d+\.\d+", level):
+        major, minor = level.split(".", 1)
+        return int(major) * 10 + int(minor)
+    if re.fullmatch(r"\d+", level):
+        return int(level)
+    raise ValueError(f"Invalid H.264 level: {level}")
+
+
+def verify_h264_metadata(config: BaseVideoConfig, output_path: Path) -> bool:
+    """Verify requested H.264 profile/level against the encoded stream."""
+    if config.codec_config.encoder != "libx264":
+        return True
+    if config.h264_profile is None and config.h264_level is None:
+        return True
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=profile,level",
+                "-of",
+                "json",
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        print(f"ERROR: Failed to verify H.264 metadata: {e}")
+        return False
+
+    try:
+        streams = json.loads(result.stdout)["streams"]
+        stream = streams[0]
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        print(f"ERROR: Failed to parse ffprobe H.264 metadata: {e}")
+        return False
+
+    actual_profile = stream.get("profile")
+    actual_level = stream.get("level")
+    if config.h264_profile is not None:
+        if not actual_profile or normalize_h264_profile(
+            actual_profile
+        ) != normalize_h264_profile(config.h264_profile):
+            print(
+                "ERROR: H.264 profile mismatch: "
+                f"expected {config.h264_profile}, got {actual_profile}"
+            )
+            return False
+
+    if config.h264_level is not None:
+        try:
+            expected_level = parse_h264_level(config.h264_level)
+        except ValueError as e:
+            print(f"ERROR: {e}")
+            return False
+        if actual_level != expected_level:
+            print(
+                "ERROR: H.264 level mismatch: "
+                f"expected {expected_level}, got {actual_level}"
+            )
+            return False
+
+    return True
+
+
 def generate_video(
     config: BaseVideoConfig,
     global_bits_per_pixel: Optional[float] = None,
@@ -406,7 +516,9 @@ def generate_video(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if config.skip_existing and output_path.exists():
-        print(f"Skipping {output_path.name} (already exists)")
+        if verify_h264_metadata(config, output_path):
+            print(f"Skipping {output_path.name} (already exists)")
+            return True
         return False
 
     encoder = config.codec_config.encoder
@@ -421,6 +533,8 @@ def generate_video(
     start_time = time.time()
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True)
+        if not verify_h264_metadata(config, output_path):
+            return False
         elapsed = time.time() - start_time
         print(f"✓ Generated {output_path.name} in {format_time(elapsed)}")
         return True
@@ -444,7 +558,7 @@ def run_batch(args: argparse.Namespace) -> int:
         return 1
 
     total = len(config.videos)
-    success_count = 0
+    ok_count = 0
     for idx, video in enumerate(config.videos, 1):
         try:
             video_config = build_video_config(
@@ -458,10 +572,10 @@ def run_batch(args: argparse.Namespace) -> int:
 
         print(f"\n[{idx}/{total}] Processing video configuration...")
         if generate_video(video_config, config.bits_per_pixel):
-            success_count += 1
+            ok_count += 1
 
-    print(f"\n✓ Generated {success_count}/{total} videos successfully")
-    return 0 if success_count == total else 1
+    print(f"\n✓ Processed {ok_count}/{total} videos successfully")
+    return 0 if ok_count == total else 1
 
 
 def build_config_schema() -> Dict[str, Any]:
@@ -598,6 +712,16 @@ def add_generic_args(parser: argparse.ArgumentParser) -> None:
         help="FFmpeg preset (default: veryslow)",
     )
     parser.add_argument(
+        "--h264-profile",
+        type=str,
+        help="H.264 profile to request and verify, e.g. high",
+    )
+    parser.add_argument(
+        "--h264-level",
+        type=str,
+        help="H.264 level to request and verify, e.g. 5.2",
+    )
+    parser.add_argument(
         "--output-dir",
         type=str,
         default=".",
@@ -630,6 +754,8 @@ def run_single_video(args: argparse.Namespace) -> int:
         "output_filename": args.output_filename,
         "skip_existing": not args.force,
         "preset": args.preset,
+        "h264_profile": args.h264_profile,
+        "h264_level": args.h264_level,
     }
     if args.resolution:
         video["resolution"] = args.resolution

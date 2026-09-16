@@ -134,6 +134,24 @@ The x265 flags disable wavefront/parallel mode decision/parallel motion
 estimation; the VP9 flags disable tiling and row multithreading — these are
 the main sources of non-deterministic output.
 
+## H.264 profile and level constraints
+
+The generator supports optional H.264-only `h264_profile` and `h264_level`
+fields. When these are set, they are passed to FFmpeg as
+`-profile:v`/`-level:v` and verified with `ffprobe` before generation is
+reported as successful:
+
+```yaml
+h264_profile: high
+h264_level: "5.2"
+```
+
+The production test-pattern config uses this only for the
+`3840x2160_30fps_h264.mp4` and `3840x2160_60fps_h264.mp4` outputs so the
+standard UHD H.264 decode samples remain compatible with hardware that
+supports H.264 High profile up to level 5.2. Higher-stress entries, such as
+`3840x2160_75fps_h264.mp4`, are left unconstrained.
+
 ## Documentation
 
 - **[Config schema reference](example_config/GUIDE_config.md)** — how to write config files

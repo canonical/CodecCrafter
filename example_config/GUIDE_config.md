@@ -33,6 +33,8 @@ Priority: video entry > `defaults` > built-in default.
 | `bits_per_pixel` | float | top-level value, else `0.1` | Bitrate = `width * height * fps * bits_per_pixel` |
 | `pix_fmt` | string | `yuv420p` | FFmpeg pixel format |
 | `preset` | string | `veryslow` | FFmpeg speed preset |
+| `h264_profile` | string | — | H.264-only profile passed as `-profile:v` and verified after encode, e.g. `high` |
+| `h264_level` | string | — | H.264-only level passed as `-level:v` and verified after encode, e.g. `"5.2"` |
 | `output_dir` | string | batch `--output-dir` | Per-video override for where the file lands. A defaults-level `output_dir` never takes effect in batch mode — the required `--output-dir` flag always replaces it |
 | `output_filename` | string | `{width}x{height}_{fps}fps_{codec}[_avsync].{ext}` | Custom filename |
 | `skip_existing` | bool | `true` | Skip generation when the output file exists |
@@ -87,6 +89,30 @@ bits_per_pixel: 0.1        # optional; this is the default
 
 Same structure in JSON: see `example_simple.json`. Production configs live
 in `golden_sample_yaml_config/`.
+
+For hardware-specific H.264 decoder validation, pin profile/level on the
+affected H.264 entries. For example:
+
+```yaml
+videos:
+  - resolution: 3840x2160
+    fps: 30
+    codec: h264
+    duration: 10
+    h264_profile: high
+    h264_level: "5.2"
+```
+
+You can also place these keys in `defaults` for an H.264-only config:
+
+```yaml
+defaults:
+  h264_profile: high
+  h264_level: "5.2"
+```
+
+The generator rejects non-H.264 configs that set these keys and fails a
+generation run if `ffprobe` reports different H.264 stream metadata.
 
 Check a config without encoding anything:
 
