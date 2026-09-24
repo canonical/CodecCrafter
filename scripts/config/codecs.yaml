@@ -51,6 +51,20 @@ mpeg4:
   keyint_min: false
   aliases: [mpeg-4]
 
+mpeg2:
+  encoder: mpeg2video
+  container: mpg
+  keyint_min: false
+  aliases: [mpeg-2, mpeg2video]
+
+# ITU-T H.263 baseline only supports fixed picture sizes: 128x96, 176x144,
+# 352x288, 704x576, and 1408x1152. Use one of these on the video entry.
+h263:
+  encoder: h263
+  container: 3gp
+  keyint_min: false
+  aliases: [h.263]
+
 # Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
 # video entry: the encoder rejects plain yuv420p.
 mjpeg:

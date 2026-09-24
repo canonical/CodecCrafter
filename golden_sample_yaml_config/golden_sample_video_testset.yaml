@@ -5,6 +5,14 @@ videos:
   # 640x480 (VGA)
   - {resolution: 640x480, fps: 30, codec: h264, duration: 10}
   - {resolution: 640x480, fps: 30, codec: h265, duration: 10}
+  # AV1 uses a fixed -cpu-used 0 (see codecs.yaml); libaom-av1 at that
+  # setting is extremely slow (~1.5s/frame even at VGA), so this is kept
+  # small to stay within CI time limits.
+  - {resolution: 640x480, fps: 30, codec: av1, duration: 10}
+
+  # 704x576 (4CIF); H.263 baseline only supports fixed picture sizes
+  # (128x96, 176x144, 352x288, 704x576, 1408x1152) - see codecs.yaml.
+  - {resolution: 704x576, fps: 30, codec: h263, duration: 10}
 
   # 1280x720
   - {resolution: 1280x720, fps: 30, codec: h264, duration: 10}
@@ -23,6 +31,7 @@ videos:
   - {resolution: 1920x1080, fps: 60, codec: vp8, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: vp9, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: mpeg4, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: mpeg2, duration: 10}
   - {resolution: 1920x1080, fps: 120, codec: h264, duration: 10}
 
   # 2560x1440 (QHD)

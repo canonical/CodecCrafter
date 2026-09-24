@@ -88,7 +88,10 @@ determinism flags below).
 - **VP8** → `.webm`
 - **VP9** → `.webm`
 - **AV1** (aliases: `av1`, `aom`) → `.webm`
+- **MPEG-2** (aliases: `mpeg2`, `mpeg-2`, `mpeg2video`) → `.mpg`
 - **MPEG-4** (aliases: `mpeg4`, `mpeg-4`) → `.mp4`
+- **H.263** (aliases: `h263`, `h.263`, fixed picture sizes only: 128x96,
+  176x144, 352x288, 704x576, 1408x1152) → `.3gp`
 - **MJPEG** (`mjpeg`, use `pix_fmt: yuvj420p`) → `.mov`
 
 ## GitHub Actions Workflow
@@ -127,7 +130,9 @@ bit-exact output across machines and runs:
 | VP8 (libvpx) | `-cpu-used 0` | — |
 | VP9 (libvpx-vp9) | `-cpu-used 0` | `-tile-columns 0 -tile-rows 0 -row-mt 0` |
 | AV1 (libaom-av1) | `-cpu-used 0` | — |
+| MPEG-2 (mpeg2video) | — | — |
 | MPEG-4 (mpeg4) | — | — |
+| H.263 (h263) | — | — |
 | MJPEG (mjpeg) | — | — (intra-only, every frame is a keyframe) |
 
 The x265 flags disable wavefront/parallel mode decision/parallel motion

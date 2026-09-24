@@ -63,7 +63,9 @@ reproducibility flags per codec — edit that file to add or tune codecs):
 | `vp8` | libvpx | webm |
 | `vp9` | libvpx-vp9 | webm |
 | `av1` (`aom`) | libaom-av1 | webm |
+| `mpeg2` (`mpeg-2`, `mpeg2video`) | mpeg2video | mpg |
 | `mpeg4` (`mpeg-4`) | mpeg4 | mp4 |
+| `h263` (`h.263`) | h263 | 3gp |
 
 ## Example
 
