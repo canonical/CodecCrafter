@@ -10,9 +10,13 @@ videos:
   # small to stay within CI time limits.
   - {resolution: 640x480, fps: 30, codec: av1, duration: 10}
 
-  # 704x576 (4CIF); H.263 baseline only supports fixed picture sizes
-  # (128x96, 176x144, 352x288, 704x576, 1408x1152) - see codecs.yaml.
+  # H.263 baseline only supports 5 fixed picture sizes (see codecs.yaml);
+  # all five are generated here to cover the full spec.
+  - {resolution: 128x96, fps: 30, codec: h263, duration: 10}
+  - {resolution: 176x144, fps: 30, codec: h263, duration: 10}
+  - {resolution: 352x288, fps: 30, codec: h263, duration: 10}
   - {resolution: 704x576, fps: 30, codec: h263, duration: 10}
+  - {resolution: 1408x1152, fps: 30, codec: h263, duration: 10}
 
   # 1280x720
   - {resolution: 1280x720, fps: 30, codec: h264, duration: 10}
@@ -66,6 +70,25 @@ videos:
   - {resolution: 4096x2160, fps: 60, codec: h264, duration: 10}
   - {resolution: 4096x2160, fps: 60, codec: h265, duration: 10}
   - {resolution: 4096x2160, fps: 60, codec: vp9, duration: 10}
+
+  # 7680x4320 (8K UHD); per OEMQA-6925's capability table, H.264, H.265,
+  # VP9, and AV1 all claim a max decode/encode resolution of 8192x8192,
+  # which covers 8K UHD. bits_per_pixel is lowered from the 0.1 default:
+  # at 8K, the default would produce a ~124 MB file over 10s, above
+  # GitHub's 100 MB limit (same issue as the MJPEG note above); 0.06
+  # keeps it comfortably under that.
+  - {resolution: 7680x4320, fps: 30, codec: h264, duration: 10,
+     bits_per_pixel: 0.06}
+  - {resolution: 7680x4320, fps: 30, codec: h265, duration: 10,
+     bits_per_pixel: 0.06}
+  - {resolution: 7680x4320, fps: 30, codec: vp9, duration: 10,
+     bits_per_pixel: 0.06}
+  # AV1's fixed -cpu-used 0 (see codecs.yaml) makes libaom-av1 extremely
+  # slow at high resolutions: measured ~6.6 minutes/frame at 7680x4320
+  # (worse than linear scaling from VGA's ~1.5s/frame), so duration is
+  # kept to 1 second (30 frames, ~3-3.5 hours to encode) to keep CI time
+  # bounded while still covering the resolution.
+  - {resolution: 7680x4320, fps: 30, codec: av1, duration: 1}
 
 # Encode-affecting parameters are pinned here on purpose, even where they
 # equal the script's built-in defaults: golden output must not change if a
