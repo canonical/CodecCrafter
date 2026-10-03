@@ -25,6 +25,11 @@ videos:
   - {resolution: 1280x720, fps: 60, codec: h264, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: h265, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: vp8, duration: 10}
+  # Non-YUV (lossless packed RGB24 / ARGB) samples; see qtrle in codecs.yaml.
+  - {resolution: 1280x720, fps: 30, codec: qtrle, duration: 10,
+     pix_fmt: rgb24, output_filename: 1280x720_30fps_qtrle_rgb24.mov}
+  - {resolution: 1280x720, fps: 30, codec: qtrle, duration: 10,
+     pix_fmt: argb, output_filename: 1280x720_30fps_qtrle_argb.mov}
 
   # 1920x1080
   - {resolution: 1920x1080, fps: 30, codec: h264, duration: 10}
@@ -37,6 +42,15 @@ videos:
   - {resolution: 1920x1080, fps: 60, codec: mpeg4, duration: 10}
   - {resolution: 1920x1080, fps: 30, codec: mpeg2, duration: 10}
   - {resolution: 1920x1080, fps: 120, codec: h264, duration: 10}
+  # AV1 is slow at -cpu-used 0 (see the 640x480 note): measured ~14s/frame
+  # at 1080p, so 3s (90 frames, ~21 minutes) keeps CI time bounded.
+  - {resolution: 1920x1080, fps: 30, codec: av1, duration: 3}
+  # Non-YUV samples; lossless qtrle is ~11 MB/s at 1080p ARGB, so 5s keeps
+  # files well under GitHub's 100 MB limit.
+  - {resolution: 1920x1080, fps: 30, codec: qtrle, duration: 5,
+     pix_fmt: rgb24, output_filename: 1920x1080_30fps_qtrle_rgb24.mov}
+  - {resolution: 1920x1080, fps: 30, codec: qtrle, duration: 5,
+     pix_fmt: argb, output_filename: 1920x1080_30fps_qtrle_argb.mov}
 
   # 2560x1440 (QHD)
   - {resolution: 2560x1440, fps: 30, codec: h264, duration: 10}
@@ -47,6 +61,9 @@ videos:
      h264_profile: high, h264_level: "5.2"}
   - {resolution: 3840x2160, fps: 30, codec: h265, duration: 10}
   - {resolution: 3840x2160, fps: 30, codec: vp9, duration: 10}
+  # AV1 at 4K is ~4x the 1080p per-frame cost, so 3s (90 frames, ~1.5
+  # hours) keeps CI time bounded.
+  - {resolution: 3840x2160, fps: 30, codec: av1, duration: 3}
   # MJPEG is intra-only full-range JPEG; higher bits_per_pixel because it
   # has no inter-frame compression. Capped at 0.25: GitHub rejects files
   # over 100 MB (0.5 produced a 102 MB file; 0.25 tops out near 78 MB).
