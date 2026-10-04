@@ -25,11 +25,6 @@ videos:
   - {resolution: 1280x720, fps: 60, codec: h264, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: h265, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: vp8, duration: 10}
-  # Non-YUV (lossless packed RGB24 / ARGB) samples; see qtrle in codecs.yaml.
-  - {resolution: 1280x720, fps: 30, codec: qtrle, duration: 10,
-     pix_fmt: rgb24, output_filename: 1280x720_30fps_qtrle_rgb24.mov}
-  - {resolution: 1280x720, fps: 30, codec: qtrle, duration: 10,
-     pix_fmt: argb, output_filename: 1280x720_30fps_qtrle_argb.mov}
 
   # 1920x1080
   - {resolution: 1920x1080, fps: 30, codec: h264, duration: 10}
@@ -45,12 +40,6 @@ videos:
   # AV1 is slow at -cpu-used 0 (see the 640x480 note): measured ~14s/frame
   # at 1080p, so 3s (90 frames, ~21 minutes) keeps CI time bounded.
   - {resolution: 1920x1080, fps: 30, codec: av1, duration: 3}
-  # Non-YUV samples; lossless qtrle is ~11 MB/s at 1080p ARGB, so 5s keeps
-  # files well under GitHub's 100 MB limit.
-  - {resolution: 1920x1080, fps: 30, codec: qtrle, duration: 5,
-     pix_fmt: rgb24, output_filename: 1920x1080_30fps_qtrle_rgb24.mov}
-  - {resolution: 1920x1080, fps: 30, codec: qtrle, duration: 5,
-     pix_fmt: argb, output_filename: 1920x1080_30fps_qtrle_argb.mov}
 
   # 2560x1440 (QHD)
   - {resolution: 2560x1440, fps: 30, codec: h264, duration: 10}
@@ -106,6 +95,27 @@ videos:
   # kept to 1 second (30 frames, ~3-3.5 hours to encode) to keep CI time
   # bounded while still covering the resolution.
   - {resolution: 7680x4320, fps: 30, codec: av1, duration: 1}
+
+  # Non-YUV (lossless RGB24 / RGBA) samples; see png in codecs.yaml.
+  # Lossless frames are large, so duration shrinks as resolution grows to
+  # stay under GitHub's 100 MB limit (RGBA measured: 720p 10s ~31 MB,
+  # 1080p 10s ~69 MB, 1440p 5s ~58 MB, 2160p 3s ~76 MB).
+  - {resolution: 1280x720, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgb24, output_filename: 1280x720_30fps_png_rgb24.mp4}
+  - {resolution: 1280x720, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgba, output_filename: 1280x720_30fps_png_rgba.mp4}
+  - {resolution: 1920x1080, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgb24, output_filename: 1920x1080_30fps_png_rgb24.mp4}
+  - {resolution: 1920x1080, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgba, output_filename: 1920x1080_30fps_png_rgba.mp4}
+  - {resolution: 2560x1440, fps: 30, codec: png, duration: 5,
+     pix_fmt: rgb24, output_filename: 2560x1440_30fps_png_rgb24.mp4}
+  - {resolution: 2560x1440, fps: 30, codec: png, duration: 5,
+     pix_fmt: rgba, output_filename: 2560x1440_30fps_png_rgba.mp4}
+  - {resolution: 3840x2160, fps: 30, codec: png, duration: 3,
+     pix_fmt: rgb24, output_filename: 3840x2160_30fps_png_rgb24.mp4}
+  - {resolution: 3840x2160, fps: 30, codec: png, duration: 3,
+     pix_fmt: rgba, output_filename: 3840x2160_30fps_png_rgba.mp4}
 
 # Encode-affecting parameters are pinned here on purpose, even where they
 # equal the script's built-in defaults: golden output must not change if a

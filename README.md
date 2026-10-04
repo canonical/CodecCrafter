@@ -93,8 +93,8 @@ determinism flags below).
 - **H.263** (aliases: `h263`, `h.263`, fixed picture sizes only: 128x96,
   176x144, 352x288, 704x576, 1408x1152) → `.3gp`
 - **MJPEG** (`mjpeg`, use `pix_fmt: yuvj420p`) → `.mov`
-- **QuickTime Animation** (`qtrle`, lossless non-YUV: use `pix_fmt: rgb24`
-  or `argb` plus an `output_filename`) → `.mov`
+- **PNG** (`png`, lossless non-YUV: use `pix_fmt: rgb24` or `rgba` plus an
+  `output_filename`) → `.mp4`
 
 ## GitHub Actions Workflow
 
@@ -136,7 +136,7 @@ bit-exact output across machines and runs:
 | MPEG-4 (mpeg4) | — | — |
 | H.263 (h263) | — | — |
 | MJPEG (mjpeg) | — | — (intra-only, every frame is a keyframe) |
-| QuickTime Animation (qtrle) | — | — (lossless) |
+| PNG (png) | — | — (lossless, intra-only) |
 
 The x265 flags disable wavefront/parallel mode decision/parallel motion
 estimation; the VP9 flags disable tiling and row multithreading — these are

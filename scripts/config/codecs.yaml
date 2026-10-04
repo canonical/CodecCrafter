@@ -65,14 +65,14 @@ h263:
   keyint_min: false
   aliases: [h.263]
 
-# Lossless QuickTime Animation (RLE). Used for non-YUV golden samples: set
-# pix_fmt to rgb24 or argb on the video entry (plus an output_filename
-# suffix, since both share the {res}_{fps}fps_qtrle.mov name). -b:v is
-# ignored; size grows with resolution, so keep duration short. GStreamer
-# decodes it via avdec_qtrle (gst-libav).
-qtrle:
-  encoder: qtrle
-  container: mov
+# Lossless, intra-only PNG frames in MP4. Used for non-YUV golden samples:
+# set pix_fmt to rgb24 or rgba on the video entry (plus an output_filename
+# suffix, since both share the {res}_{fps}fps_png.mp4 name). -b:v and -g
+# are ignored; size grows with resolution, so keep duration short.
+# GStreamer decodes it with qtdemux ! pngdec (gst-plugins-good).
+png:
+  encoder: png
+  container: mp4
   keyint_min: false
 
 # Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
