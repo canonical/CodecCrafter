@@ -65,15 +65,18 @@ h263:
   keyint_min: false
   aliases: [h.263]
 
-# Lossless, intra-only PNG frames in MP4. Used for non-YUV golden samples:
-# set pix_fmt to rgb24 or rgba on the video entry (plus an output_filename
-# suffix, since both share the {res}_{fps}fps_png.mp4 name). -b:v and -g
-# are ignored; size grows with resolution, so keep duration short.
-# GStreamer decodes it with qtdemux ! pngdec (gst-plugins-good).
-png:
-  encoder: png
+# H.264 with RGB input kept as RGB (High 4:4:4 Predictive profile). Used
+# for non-YUV golden samples: set pix_fmt: rgb24 and an output_filename
+# (e.g. {res}_{fps}fps_h264_rgb24.mp4), since the default name would be
+# {res}_{fps}fps_h264rgb.mp4. H.264 has no alpha, so there is no RGBA form.
+h264rgb:
+  encoder: libx264rgb
   container: mp4
-  keyint_min: false
+  speed_type: preset
+  sc_threshold: true
+  codec_params:
+    - "-x264-params"
+    - "deterministic=1:no-mbtree=1:no-mixed-refs=1"
 
 # Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
 # video entry: the encoder rejects plain yuv420p.
