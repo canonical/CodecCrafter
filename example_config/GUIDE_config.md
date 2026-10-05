@@ -67,6 +67,7 @@ reproducibility flags per codec — edit that file to add or tune codecs):
 | `mpeg4` (`mpeg-4`) | mpeg4 | mp4 |
 | `h263` (`h.263`) | h263 | 3gp |
 | `h264rgb` | libx264rgb | mp4 |
+| `png` | png | mp4 |
 
 ## Example
 

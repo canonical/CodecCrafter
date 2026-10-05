@@ -78,6 +78,16 @@ h264rgb:
     - "-x264-params"
     - "deterministic=1:no-mbtree=1:no-mixed-refs=1"
 
+# Lossless, intra-only PNG frames in MP4, for RGBA golden samples (H.264 and
+# H.265 have no alpha channel). Set pix_fmt: rgba and an output_filename
+# (e.g. {res}_{fps}fps_png_rgba.mp4). -b:v and -g are ignored; size grows
+# with resolution, so keep duration short. GStreamer decodes it with
+# qtdemux ! pngdec (gst-plugins-good).
+png:
+  encoder: png
+  container: mp4
+  keyint_min: false
+
 # Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
 # video entry: the encoder rejects plain yuv420p.
 mjpeg:

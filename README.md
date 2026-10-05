@@ -94,6 +94,8 @@ determinism flags below).
 - **H.263** (aliases: `h263`, `h.263`, fixed picture sizes only: 128x96,
   176x144, 352x288, 704x576, 1408x1152) → `.3gp`
 - **MJPEG** (`mjpeg`, use `pix_fmt: yuvj420p`) → `.mov`
+- **PNG** (`png`, lossless RGBA: use `pix_fmt: rgba` plus an
+  `output_filename`) → `.mp4`
 - **H.264 RGB** (`h264rgb`, libx264rgb High 4:4:4 Predictive, non-YUV: use
   `pix_fmt: rgb24` plus an `output_filename`) → `.mp4`
 
@@ -137,6 +139,7 @@ bit-exact output across machines and runs:
 | MPEG-4 (mpeg4) | — | — |
 | H.263 (h263) | — | — |
 | MJPEG (mjpeg) | — | — (intra-only, every frame is a keyframe) |
+| PNG (png) | — | — (lossless, intra-only) |
 | H.264 RGB (libx264rgb) | `-preset veryslow` | `deterministic=1:no-mbtree=1:no-mixed-refs=1` |
 
 The x265 flags disable wavefront/parallel mode decision/parallel motion
