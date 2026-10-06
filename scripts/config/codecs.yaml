@@ -65,23 +65,11 @@ h263:
   keyint_min: false
   aliases: [h.263]
 
-# H.264 with RGB input kept as RGB (High 4:4:4 Predictive profile). Used
-# for non-YUV golden samples: set pix_fmt: rgb24 and an output_filename
-# (e.g. {res}_{fps}fps_h264_rgb24.mp4), since the default name would be
-# {res}_{fps}fps_h264rgb.mp4. H.264 has no alpha, so there is no RGBA form.
-h264rgb:
-  encoder: libx264rgb
-  container: mp4
-  speed_type: preset
-  sc_threshold: true
-  codec_params:
-    - "-x264-params"
-    - "deterministic=1:no-mbtree=1:no-mixed-refs=1"
-
-# Lossless, intra-only PNG frames in MP4, for RGBA golden samples (H.264 and
-# H.265 have no alpha channel). Set pix_fmt: rgba and an output_filename
-# (e.g. {res}_{fps}fps_png_rgba.mp4). -b:v and -g are ignored; size grows
-# with resolution, so keep duration short. GStreamer decodes it with
+# Lossless, intra-only PNG frames in MP4, for non-YUV golden samples. Set
+# pix_fmt to rgb24 or rgba and an output_filename (e.g.
+# {res}_{fps}fps_png_rgb24.mp4), since both share the default
+# {res}_{fps}fps_png.mp4 name. -b:v and -g are ignored; size grows with
+# resolution, so keep duration short. GStreamer decodes it with
 # qtdemux ! pngdec (gst-plugins-good).
 png:
   encoder: png

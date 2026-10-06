@@ -85,7 +85,6 @@ determinism flags below).
 
 - **H.264** (aliases: `h264`, `h.264`, `x264`) → `.mp4`
 - **H.265/HEVC** (aliases: `h265`, `h.265`, `hevc`, `x265`) → `.mp4`
-  (for RGB samples, set `pix_fmt: gbrp`: encodes RGB directly, Rext profile)
 - **VP8** → `.webm`
 - **VP9** → `.webm`
 - **AV1** (aliases: `av1`, `aom`) → `.webm`
@@ -94,10 +93,8 @@ determinism flags below).
 - **H.263** (aliases: `h263`, `h.263`, fixed picture sizes only: 128x96,
   176x144, 352x288, 704x576, 1408x1152) → `.3gp`
 - **MJPEG** (`mjpeg`, use `pix_fmt: yuvj420p`) → `.mov`
-- **PNG** (`png`, lossless RGBA: use `pix_fmt: rgba` plus an
+- **PNG** (`png`, lossless non-YUV: use `pix_fmt: rgb24` or `rgba` plus an
   `output_filename`) → `.mp4`
-- **H.264 RGB** (`h264rgb`, libx264rgb High 4:4:4 Predictive, non-YUV: use
-  `pix_fmt: rgb24` plus an `output_filename`) → `.mp4`
 
 ## GitHub Actions Workflow
 
@@ -140,7 +137,6 @@ bit-exact output across machines and runs:
 | H.263 (h263) | — | — |
 | MJPEG (mjpeg) | — | — (intra-only, every frame is a keyframe) |
 | PNG (png) | — | — (lossless, intra-only) |
-| H.264 RGB (libx264rgb) | `-preset veryslow` | `deterministic=1:no-mbtree=1:no-mixed-refs=1` |
 
 The x265 flags disable wavefront/parallel mode decision/parallel motion
 estimation; the VP9 flags disable tiling and row multithreading — these are
