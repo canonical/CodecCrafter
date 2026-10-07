@@ -22,6 +22,7 @@ videos:
   - {resolution: 1280x720, fps: 30, codec: h264, duration: 10}
   - {resolution: 1280x720, fps: 30, codec: h265, duration: 10}
   - {resolution: 1280x720, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1280x720, fps: 30, codec: vp9, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: h264, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: h265, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: vp8, duration: 10}
@@ -30,6 +31,8 @@ videos:
   - {resolution: 1920x1080, fps: 30, codec: h264, duration: 10}
   - {resolution: 1920x1080, fps: 30, codec: h265, duration: 10}
   - {resolution: 1920x1080, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: vp9, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: mpeg4, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: h264, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: h265, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: vp8, duration: 10}
