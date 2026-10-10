@@ -5,11 +5,24 @@ videos:
   # 640x480 (VGA)
   - {resolution: 640x480, fps: 30, codec: h264, duration: 10}
   - {resolution: 640x480, fps: 30, codec: h265, duration: 10}
+  # AV1 uses a fixed -cpu-used 0 (see codecs.yaml); libaom-av1 at that
+  # setting is extremely slow (~1.5s/frame even at VGA), so this is kept
+  # small to stay within CI time limits.
+  - {resolution: 640x480, fps: 30, codec: av1, duration: 10}
+
+  # H.263 baseline only supports 5 fixed picture sizes (see codecs.yaml);
+  # all five are generated here to cover the full spec.
+  - {resolution: 128x96, fps: 30, codec: h263, duration: 10}
+  - {resolution: 176x144, fps: 30, codec: h263, duration: 10}
+  - {resolution: 352x288, fps: 30, codec: h263, duration: 10}
+  - {resolution: 704x576, fps: 30, codec: h263, duration: 10}
+  - {resolution: 1408x1152, fps: 30, codec: h263, duration: 10}
 
   # 1280x720
   - {resolution: 1280x720, fps: 30, codec: h264, duration: 10}
   - {resolution: 1280x720, fps: 30, codec: h265, duration: 10}
   - {resolution: 1280x720, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1280x720, fps: 30, codec: vp9, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: h264, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: h265, duration: 10}
   - {resolution: 1280x720, fps: 60, codec: vp8, duration: 10}
@@ -18,12 +31,18 @@ videos:
   - {resolution: 1920x1080, fps: 30, codec: h264, duration: 10}
   - {resolution: 1920x1080, fps: 30, codec: h265, duration: 10}
   - {resolution: 1920x1080, fps: 30, codec: vp8, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: vp9, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: mpeg4, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: h264, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: h265, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: vp8, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: vp9, duration: 10}
   - {resolution: 1920x1080, fps: 60, codec: mpeg4, duration: 10}
+  - {resolution: 1920x1080, fps: 30, codec: mpeg2, duration: 10}
   - {resolution: 1920x1080, fps: 120, codec: h264, duration: 10}
+  # AV1 is slow at -cpu-used 0 (see the 640x480 note): measured ~14s/frame
+  # at 1080p, so 3s (90 frames, ~21 minutes) keeps CI time bounded.
+  - {resolution: 1920x1080, fps: 30, codec: av1, duration: 3}
 
   # 2560x1440 (QHD)
   - {resolution: 2560x1440, fps: 30, codec: h264, duration: 10}
@@ -34,6 +53,9 @@ videos:
      h264_profile: high, h264_level: "5.2"}
   - {resolution: 3840x2160, fps: 30, codec: h265, duration: 10}
   - {resolution: 3840x2160, fps: 30, codec: vp9, duration: 10}
+  # AV1 at 4K is ~4x the 1080p per-frame cost, so 3s (90 frames, ~1.5
+  # hours) keeps CI time bounded.
+  - {resolution: 3840x2160, fps: 30, codec: av1, duration: 3}
   # MJPEG is intra-only full-range JPEG; higher bits_per_pixel because it
   # has no inter-frame compression. Capped at 0.25: GitHub rejects files
   # over 100 MB (0.5 produced a 102 MB file; 0.25 tops out near 78 MB).
@@ -57,6 +79,62 @@ videos:
   - {resolution: 4096x2160, fps: 60, codec: h264, duration: 10}
   - {resolution: 4096x2160, fps: 60, codec: h265, duration: 10}
   - {resolution: 4096x2160, fps: 60, codec: vp9, duration: 10}
+
+  # 7680x4320 (8K UHD); per OEMQA-6925's capability table, H.264, H.265,
+  # VP9, and AV1 all claim a max decode/encode resolution of 8192x8192,
+  # which covers 8K UHD. bits_per_pixel is lowered from the 0.1 default:
+  # at 8K, the default would produce a ~124 MB file over 10s, above
+  # GitHub's 100 MB limit (same issue as the MJPEG note above); 0.06
+  # keeps it comfortably under that.
+  - {resolution: 7680x4320, fps: 30, codec: h264, duration: 10,
+     bits_per_pixel: 0.06}
+  - {resolution: 7680x4320, fps: 30, codec: h265, duration: 10,
+     bits_per_pixel: 0.06}
+  - {resolution: 7680x4320, fps: 30, codec: vp9, duration: 10,
+     bits_per_pixel: 0.06}
+  # AV1's fixed -cpu-used 0 (see codecs.yaml) makes libaom-av1 extremely
+  # slow at high resolutions: measured ~6.6 minutes/frame at 7680x4320
+  # (worse than linear scaling from VGA's ~1.5s/frame), so duration is
+  # kept to 1 second (30 frames, ~3-3.5 hours to encode) to keep CI time
+  # bounded while still covering the resolution.
+  - {resolution: 7680x4320, fps: 30, codec: av1, duration: 1}
+
+  # Non-YUV samples (RGB24 / RGBA): lossless PNG frames in MP4 (see png in
+  # codecs.yaml). Each RGBA frame is large (~0.1/0.23/0.39/0.84 MB at
+  # 720p/1080p/1440p/2160p; RGB24 is ~8% smaller), so duration is sized per
+  # resolution and fps to stay under GitHub's 100 MB limit.
+  - {resolution: 1280x720, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgb24, output_filename: 1280x720_30fps_png_rgb24.mp4}
+  - {resolution: 1280x720, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgba, output_filename: 1280x720_30fps_png_rgba.mp4}
+  - {resolution: 1280x720, fps: 60, codec: png, duration: 10,
+     pix_fmt: rgb24, output_filename: 1280x720_60fps_png_rgb24.mp4}
+  - {resolution: 1280x720, fps: 60, codec: png, duration: 10,
+     pix_fmt: rgba, output_filename: 1280x720_60fps_png_rgba.mp4}
+  - {resolution: 1920x1080, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgb24, output_filename: 1920x1080_30fps_png_rgb24.mp4}
+  - {resolution: 1920x1080, fps: 30, codec: png, duration: 10,
+     pix_fmt: rgba, output_filename: 1920x1080_30fps_png_rgba.mp4}
+  - {resolution: 1920x1080, fps: 60, codec: png, duration: 5,
+     pix_fmt: rgb24, output_filename: 1920x1080_60fps_png_rgb24.mp4}
+  - {resolution: 1920x1080, fps: 60, codec: png, duration: 5,
+     pix_fmt: rgba, output_filename: 1920x1080_60fps_png_rgba.mp4}
+  - {resolution: 2560x1440, fps: 30, codec: png, duration: 5,
+     pix_fmt: rgb24, output_filename: 2560x1440_30fps_png_rgb24.mp4}
+  - {resolution: 2560x1440, fps: 30, codec: png, duration: 5,
+     pix_fmt: rgba, output_filename: 2560x1440_30fps_png_rgba.mp4}
+  - {resolution: 2560x1440, fps: 60, codec: png, duration: 3,
+     pix_fmt: rgb24, output_filename: 2560x1440_60fps_png_rgb24.mp4}
+  - {resolution: 2560x1440, fps: 60, codec: png, duration: 3,
+     pix_fmt: rgba, output_filename: 2560x1440_60fps_png_rgba.mp4}
+  - {resolution: 3840x2160, fps: 30, codec: png, duration: 3,
+     pix_fmt: rgb24, output_filename: 3840x2160_30fps_png_rgb24.mp4}
+  - {resolution: 3840x2160, fps: 30, codec: png, duration: 3,
+     pix_fmt: rgba, output_filename: 3840x2160_30fps_png_rgba.mp4}
+  - {resolution: 3840x2160, fps: 60, codec: png, duration: 1.5,
+     pix_fmt: rgb24, output_filename: 3840x2160_60fps_png_rgb24.mp4}
+  - {resolution: 3840x2160, fps: 60, codec: png, duration: 1.5,
+     pix_fmt: rgba, output_filename: 3840x2160_60fps_png_rgba.mp4}
 
 # Encode-affecting parameters are pinned here on purpose, even where they
 # equal the script's built-in defaults: golden output must not change if a

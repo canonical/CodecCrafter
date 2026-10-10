@@ -51,6 +51,31 @@ mpeg4:
   keyint_min: false
   aliases: [mpeg-4]
 
+mpeg2:
+  encoder: mpeg2video
+  container: mpg
+  keyint_min: false
+  aliases: [mpeg-2, mpeg2video]
+
+# ITU-T H.263 baseline only supports fixed picture sizes: 128x96, 176x144,
+# 352x288, 704x576, and 1408x1152. Use one of these on the video entry.
+h263:
+  encoder: h263
+  container: 3gp
+  keyint_min: false
+  aliases: [h.263]
+
+# Lossless, intra-only PNG frames in MP4, for non-YUV golden samples. Set
+# pix_fmt to rgb24 or rgba and an output_filename (e.g.
+# {res}_{fps}fps_png_rgb24.mp4), since both share the default
+# {res}_{fps}fps_png.mp4 name. -b:v and -g are ignored; size grows with
+# resolution, so keep duration short. GStreamer decodes it with
+# qtdemux ! pngdec (gst-plugins-good).
+png:
+  encoder: png
+  container: mp4
+  keyint_min: false
+
 # Intra-only; -g is ignored. Use pix_fmt yuvj420p (full-range JPEG) on the
 # video entry: the encoder rejects plain yuv420p.
 mjpeg:
